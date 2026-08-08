@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0d9488" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="TaskFlow" />
+  <meta name="description" content="تطبيق المهام اليومية - نظم يومك، وحقق أهدافك" />
+  <title>TaskFlow – مهامي اليومية</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+<!-- Confetti Canvas -->
+<canvas id="confetti-canvas"></canvas>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ========== APP CONTAINER ========== -->
+<div class="app-container">
+
+  <!-- APP HEADER -->
+  <header class="app-header">
+    <div class="header-top">
+      <div class="user-welcome">
+        <h1 id="greeting-text">🌙 مساء الخير!</h1>
+        <p id="date-text">جارٍ تحميل التاريخ...</p>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="search-toggle-btn" title="بحث" aria-label="بحث">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </button>
+        <button class="icon-btn" id="theme-toggle-btn" title="تبديل الوضع" aria-label="تبديل الوضع">
+          <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats Banner -->
+    <div class="stats-banner">
+      <div class="streak-info">
+        <span class="streak-flame">🔥</span>
+        <div class="streak-text">
+          <span>سلسلة الإنجاز</span>
+          <strong id="streak-count">0 أيام</strong>
+        </div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:0.75rem;opacity:0.85;margin-bottom:4px">منجز اليوم</div>
+        <div style="font-size:1.1rem;font-weight:800;" id="today-summary">0 / 0</div>
+      </div>
+      <div class="progress-ring-container">
+        <svg class="progress-ring" viewBox="0 0 54 54">
+          <circle class="bg-circle" cx="27" cy="27" r="22"/>
+          <circle class="progress-circle" id="progress-circle" cx="27" cy="27" r="22"/>
+        </svg>
+        <span class="progress-value" id="progress-value">0%</span>
+      </div>
+    </div>
+
+    <!-- Search Bar (hidden by default) -->
+    <div class="search-box" id="search-box" style="display:none; margin-top:14px;">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="search-input" class="form-control" placeholder="ابحث في مهامك..." aria-label="بحث في المهام" style="padding-right:14px;padding-left:42px;margin-bottom:0;" />
+    </div>
+  </header>
+
+  <!-- APP MAIN CONTENT -->
+  <main class="app-content">
+
+    <!-- Category Filter Chips -->
+    <div class="categories-filter" id="categories-filter" role="tablist" aria-label="التصنيفات">
+      <button class="chip-btn active" data-category="all" role="tab">الكل</button>
+      <button class="chip-btn" data-category="work" role="tab">💼 عمل</button>
+      <button class="chip-btn" data-category="personal" role="tab">👤 شخصي</button>
+      <button class="chip-btn" data-category="study" role="tab">📚 دراسة</button>
+      <button class="chip-btn" data-category="health" role="tab">🏋️ صحة</button>
+      <button class="chip-btn" data-category="shopping" role="tab">🛒 تسوق</button>
+    </div>
+
+    <!-- Status Tabs -->
+    <div class="status-tabs" role="tablist" aria-label="حالة المهام">
+      <button class="tab-btn active" data-status="all" role="tab">الكل</button>
+      <button class="tab-btn" data-status="pending" role="tab">قيد التنفيذ</button>
+      <button class="tab-btn" data-status="completed" role="tab">مكتملة</button>
+    </div>
+
+    <!-- Tasks List -->
+    <div class="tasks-list" id="tasks-list" aria-label="قائمة المهام">
+      <!-- Tasks rendered by JS -->
+    </div>
+
+  </main>
+
+  <!-- FAB Add Task Button -->
+  <button class="fab-btn" id="fab-btn" aria-label="إضافة مهمة جديدة">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="26" height="26" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  </button>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav" aria-label="التنقل الرئيسي">
+    <button class="nav-item active" data-view="tasks" aria-label="المهام">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span>المهام</span>
+    </button>
+    <button class="nav-item" data-view="today" aria-label="اليوم">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>اليوم</span>
+    </button>
+    <button class="nav-item" data-view="stats" aria-label="الإحصائيات">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>إحصائيات</span>
+    </button>
+    <button class="nav-item" data-view="settings" aria-label="الإعدادات">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 0-1.41-1.41L16 5.17A7.89 7.89 0 0 0 13 4V2a10 10 0 0 0-2 0v2a7.89 7.89 0 0 0-3 1.17L6.34 3.52a10 10 0 0 0-1.41 1.41L6.58 6.5A7.89 7.89 0 0 0 5 9.45H3a10 10 0 0 0 0 2h2a7.89 7.89 0 0 0 1.58 3.55L4.93 16.52a10 10 0 0 0 1.41 1.41l1.65-1.66A7.89 7.89 0 0 0 11 17.83V20a10 10 0 0 0 2 0v-2.17a7.89 7.89 0 0 0 3.55-1.58l1.65 1.66a10 10 0 0 0 1.41-1.41l-1.65-1.66A7.89 7.89 0 0 0 19 12.55h2a10 10 0 0 0 0-2h-2a7.89 7.89 0 0 0-1.93-2.62z"/></svg>
+      <span>إعدادات</span>
+    </button>
+  </nav>
+
+</div><!-- end .app-container -->
+
+<!-- ========== ADD/EDIT TASK MODAL ========== -->
+<div class="modal-overlay" id="task-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h2 id="modal-title">إضافة مهمة جديدة</h2>
+      <button class="icon-btn" id="modal-close-btn" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <form id="task-form" novalidate>
+      <input type="hidden" id="task-id" value="" />
+
+      <div class="form-group">
+        <label for="task-title-input">عنوان المهمة *</label>
+        <input type="text" id="task-title-input" class="form-control" placeholder="ماذا تريد أن تفعل؟" required maxlength="120" />
+      </div>
+
+      <div class="form-group">
+        <label for="task-desc-input">الوصف (اختياري)</label>
+        <textarea id="task-desc-input" class="form-control" placeholder="تفاصيل إضافية..." rows="2" style="resize:vertical"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="task-date-input">تاريخ الاستحقاق</label>
+          <input type="date" id="task-date-input" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label for="task-time-input">التوقيت</label>
+          <input type="time" id="task-time-input" class="form-control" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>الأولوية</label>
+        <div class="options-grid">
+          <label class="radio-card">
+            <input type="radio" name="priority" value="high" id="prio-high" />
+            🔥 عالية
+          </label>
+          <label class="radio-card">
+            <input type="radio" name="priority" value="medium" id="prio-medium" checked />
+            ⚡ متوسطة
+          </label>
+          <label class="radio-card">
+            <input type="radio" name="priority" value="low" id="prio-low" />
+            ☕ منخفضة
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="task-category-input">التصنيف</label>
+        <select id="task-category-input" class="form-control">
+          <option value="work">💼 عمل</option>
+          <option value="personal">👤 شخصي</option>
+          <option value="study">📚 دراسة</option>
+          <option value="health">🏋️ صحة</option>
+          <option value="shopping">🛒 تسوق</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>مهام فرعية (اختياري)</label>
+        <div class="subtasks-input-list" id="subtasks-input-list">
+          <div class="subtask-input-item">
+            <input type="text" class="form-control subtask-input" placeholder="مهمة فرعية 1..." />
+            <button type="button" class="action-icon-btn delete" onclick="this.parentElement.remove()" aria-label="حذف">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+        <button type="button" id="add-subtask-btn" style="width:100%;margin-top:8px;padding:10px;border:1px dashed var(--border);border-radius:var(--radius-md);background:transparent;color:var(--primary);cursor:pointer;font-size:0.85rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          إضافة مهمة فرعية
+        </button>
+      </div>
+
+      <button type="submit" class="btn-primary" id="form-submit-btn">
+        ✅ حفظ المهمة
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ========== TASK DETAIL MODAL ========== -->
+<div class="modal-overlay" id="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h2 id="detail-title">تفاصيل المهمة</h2>
+      <button class="icon-btn" id="detail-close-btn" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- ========== STATS VIEW (hidden panel) ========== -->
+<div id="stats-view" style="display:none;padding:16px 20px;">
+  <h2 style="font-size:1.1rem;font-weight:800;margin-bottom:16px;color:var(--text-main);">📊 إحصائياتك</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="stats-grid"></div>
+  <div style="margin-top:20px;" id="category-breakdown"></div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
