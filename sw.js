@@ -1,10 +1,10 @@
-// TaskFlow Service Worker - Network First Strategy for Instant Live Updates
-const CACHE_NAME = 'taskflow-cache-v2';
+// TaskFlow Service Worker v6 - Network First + Push Notification Support
+const CACHE_NAME = 'taskflow-cache-v6';
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=2',
-  './js/app.js?v=2',
+  './css/styles.css?v=6',
+  './js/app.js?v=6',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'
@@ -43,5 +43,36 @@ self.addEventListener('fetch', event => {
         return response;
       })
       .catch(() => caches.match(event.request))
+  );
+});
+
+// Push Notification Handler (for due task alarms)
+self.addEventListener('push', event => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || '🔔 تنبيه TaskFlow';
+  const options = {
+    body: data.body || 'لديك مهام مستحقة اليوم!',
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    vibrate: [200, 100, 200],
+    dir: 'rtl',
+    lang: 'ar',
+    tag: 'taskflow-alarm',
+    renotify: true,
+    data: { url: self.registration.scope }
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Notification Click – open or focus the app
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if (client.url && 'focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('./');
+    })
   );
 });
