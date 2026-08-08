@@ -2072,5 +2072,28 @@ html {
   .pomo-timer-txt {
     font-size: 1rem;
   }
+
+/* ── Mobile Performance Optimizations (GPU & Battery Boost) ── */
+@media (max-width: 768px) {
+  /* 1. Hide 3 large blurred orb elements that drain mobile GPU */
+  .orb {
+    display: none !important;
+  }
+
+  /* 2. Disable continuous background animations on mobile */
+  .stat-card::before,
+  .stat-card::after,
+  .app-header::after,
+  .stat-icon,
+  .progress-circle {
+    animation: none !important;
+  }
+
+  /* 3. Simplify heavy glass backdrop blur for smooth 60fps scrolling */
+  .app-header,
+  .bottom-nav {
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
 }
 

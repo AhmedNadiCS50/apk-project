@@ -1,10 +1,10 @@
-// TaskFlow Service Worker v17 – Mobile Responsive Overhaul
-const CACHE_NAME = 'taskflow-cache-v17';
+// TaskFlow Service Worker v18 – Performance & Smoothness Boost
+const CACHE_NAME = 'taskflow-cache-v18';
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=17',
-  './js/app.js?v=17',
+  './css/styles.css?v=18',
+  './js/app.js?v=18',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'

@@ -1852,7 +1852,15 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Ambient Background Particle Canvas System
+// Disabled on mobile to prevent lag — runs throttled at ~20fps on desktop
 function initParticleCanvas() {
+  // Skip entirely on mobile / small screens — biggest source of lag
+  if (window.innerWidth <= 768) {
+    const canvas = document.getElementById('particle-canvas');
+    if (canvas) canvas.style.display = 'none';
+    return;
+  }
+
   const canvas = document.getElementById('particle-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -1860,42 +1868,54 @@ function initParticleCanvas() {
   let height = (canvas.height = window.innerHeight);
 
   window.addEventListener('resize', () => {
+    // If user resizes to mobile width, stop the canvas
+    if (window.innerWidth <= 768) {
+      canvas.style.display = 'none';
+      return;
+    }
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
   });
 
-  const particles = Array.from({ length: 35 }, () => ({
+  // Fewer particles, slower movement
+  const particles = Array.from({ length: 20 }, () => ({
     x: Math.random() * width,
     y: Math.random() * height,
-    radius: Math.random() * 2.5 + 1,
-    vx: (Math.random() - 0.5) * 0.4,
-    vy: (Math.random() - 0.5) * 0.4,
-    alpha: Math.random() * 0.5 + 0.2,
+    radius: Math.random() * 2 + 0.8,
+    vx: (Math.random() - 0.5) * 0.25,
+    vy: (Math.random() - 0.5) * 0.25,
+    alpha: Math.random() * 0.4 + 0.15,
   }));
 
-  function animate() {
+  // Throttle to ~20fps instead of 60fps
+  let lastTime = 0;
+  const FPS_INTERVAL = 1000 / 20;
+
+  function animate(timestamp) {
+    if (window.innerWidth <= 768) return; // stop if resized to mobile
+    requestAnimationFrame(animate);
+    const elapsed = timestamp - lastTime;
+    if (elapsed < FPS_INTERVAL) return;
+    lastTime = timestamp - (elapsed % FPS_INTERVAL);
+
     ctx.clearRect(0, 0, width, height);
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(13, 148, 136, 0.35)';
+    ctx.fillStyle = isDark ? 'rgba(255,255,255,0.35)' : 'rgba(13,148,136,0.30)';
 
     particles.forEach((p) => {
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
       ctx.globalAlpha = p.alpha;
       ctx.fill();
-
       p.x += p.vx;
       p.y += p.vy;
-
       if (p.x < 0) p.x = width;
       if (p.x > width) p.x = 0;
       if (p.y < 0) p.y = height;
       if (p.y > height) p.y = 0;
     });
-
-    requestAnimationFrame(animate);
   }
-  animate();
+  requestAnimationFrame(animate);
 }
 
 if ('serviceWorker' in navigator) {
