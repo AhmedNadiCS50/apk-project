@@ -1,4 +1,4 @@
-/* TaskFlow - Premium Mobile App Styling */
+/* TaskFlow - World-Class Ultra-Premium Mobile & Tablet App Styling */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
@@ -212,6 +212,42 @@ html, body {
   color: var(--text-main);
   direction: rtl;
   transition: background 0.4s ease, color 0.4s ease;
+  position: relative;
+}
+
+/* Dynamic Floating Ambient Background Orbs Animation */
+body::before, body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
+  animation: floatOrb 18s infinite ease-in-out alternate;
+}
+
+body::before {
+  top: -100px;
+  right: -100px;
+  width: 350px;
+  height: 350px;
+  background: var(--primary-glow);
+}
+
+body::after {
+  bottom: -100px;
+  left: -100px;
+  width: 400px;
+  height: 400px;
+  background: var(--accent-glow);
+  animation-delay: -9s;
+}
+
+@keyframes floatOrb {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(40px, 60px) scale(1.2); }
+  100% { transform: translate(-30px, -40px) scale(0.9); }
 }
 
 body {
@@ -220,10 +256,10 @@ body {
   align-items: flex-start;
 }
 
-/* Mobile Container Wrapper - Perfectly Centered & Proportioned */
+/* Mobile, Tablet & Desktop Dynamic Responsive Layout */
 .app-container {
   width: 100%;
-  max-width: 480px;
+  max-width: 520px;
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg-main);
@@ -233,25 +269,46 @@ body {
   box-shadow: var(--shadow-lg);
   padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
   padding-top: env(safe-area-inset-top, 0px);
+  z-index: 1;
 }
 
-@media (min-width: 520px) {
+/* Tablet Breakpoint (≥768px): Expand Container for Multi-Column Layout */
+@media (min-width: 768px) {
   body {
-    padding: 24px 0;
+    padding: 30px 20px;
   }
   .app-container {
-    min-height: calc(100vh - 48px);
-    min-height: calc(100dvh - 48px);
+    max-width: 780px;
+    min-height: calc(100vh - 60px);
+    min-height: calc(100dvh - 60px);
     border-radius: var(--radius-lg);
     overflow: hidden;
     border: 1px solid var(--border);
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5);
+  }
+  .tasks-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .tasks-list.grid-mode {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Desktop Breakpoint (≥1024px): Ultra-Wide Dashboard Experience */
+@media (min-width: 1024px) {
+  .app-container {
+    max-width: 960px;
+  }
+  .dashboard-widgets-grid {
+    grid-template-columns: 1fr 1fr 1fr;
   }
 }
 
 /* App Header */
 .app-header {
-  padding: 22px 20px 18px;
+  padding: 22px 22px 18px;
   background: var(--surface);
   backdrop-filter: var(--glass-backdrop);
   -webkit-backdrop-filter: var(--glass-backdrop);
@@ -317,6 +374,58 @@ body {
 
 .icon-btn:active {
   transform: scale(0.92);
+}
+
+/* Dynamic Motivational Quote Banner Widget */
+.quote-banner {
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--surface-solid) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.84rem;
+  color: var(--text-main);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.quote-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+/* Quick Task Templates Row */
+.templates-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  scrollbar-width: none;
+}
+.templates-row::-webkit-scrollbar { display: none; }
+
+.template-chip {
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  border: 1px dashed var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--spring-bounce);
+}
+
+.template-chip:hover {
+  background: var(--primary);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 0 12px var(--primary-glow);
 }
 
 /* Dual Grid Dashboard Banner */
@@ -893,7 +1002,7 @@ body {
 .theme-swatch.sunset { background: linear-gradient(135deg, #ea580c, #fb923c); }
 .theme-swatch.emerald { background: linear-gradient(135deg, #059669, #34d399); }
 
-/* Floating Action Button (FAB) - Fixed Positioning inside container */
+/* Floating Action Button (FAB) */
 .fab-btn {
   position: fixed;
   bottom: calc(90px + env(safe-area-inset-bottom, 0px));
@@ -918,6 +1027,11 @@ body {
     left: 20px;
   }
 }
+@media (min-width: 768px) {
+  .fab-btn {
+    left: calc(50% - 340px);
+  }
+}
 
 .fab-btn:hover, .fab-btn:active {
   transform: scale(1.14) rotate(90deg);
@@ -931,7 +1045,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 480px;
+  max-width: 520px;
   height: calc(72px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--surface);
@@ -946,8 +1060,9 @@ body {
   padding-right: 10px;
 }
 
-@media (min-width: 520px) {
+@media (min-width: 768px) {
   .bottom-nav {
+    max-width: 780px;
     border-bottom-left-radius: var(--radius-lg);
     border-bottom-right-radius: var(--radius-lg);
   }
@@ -1007,7 +1122,7 @@ body {
 
 .modal-card {
   width: 100%;
-  max-width: 480px;
+  max-width: 520px;
   background: var(--bg-main);
   border-top-left-radius: var(--radius-lg);
   border-top-right-radius: var(--radius-lg);

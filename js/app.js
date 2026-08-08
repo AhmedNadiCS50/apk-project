@@ -68,7 +68,7 @@ function isToday(dateStr) {
 }
 
 // =============================================
-//  Greeting & Date
+//  Greeting & Motivational Quote
 // =============================================
 function updateGreeting() {
   const hour = new Date().getHours();
@@ -84,11 +84,24 @@ function updateGreeting() {
   else if (hour >= 17 && hour < 21) greeting = greetings.evening;
   else greeting = greetings.night;
 
-  document.getElementById('greeting-text').textContent = greeting;
+  const greetingEl = document.getElementById('greeting-text');
+  if (greetingEl) greetingEl.textContent = greeting;
 
   const now = new Date();
   const dateOpts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-  document.getElementById('date-text').textContent = now.toLocaleDateString('ar-EG', dateOpts);
+  const dateEl = document.getElementById('date-text');
+  if (dateEl) dateEl.textContent = now.toLocaleDateString('ar-EG', dateOpts);
+
+  const quotes = [
+    "خطوة واحدة صغيرة كل يوم تصنع فارقاً كبيراً! 🚀",
+    "النجاح هو مجموع المحاولات الصغيرة اليومية! 💪",
+    "الانضباط هو الجسر بين الأهداف والإنجازات! ✨",
+    "ركّز على إنجاز مهام اليوم وبث السرور في نفسك! 🌟"
+  ];
+  const quoteEl = document.getElementById('quote-text');
+  if (quoteEl) {
+    quoteEl.textContent = quotes[Math.floor(Math.random() * quotes.length)];
+  }
 }
 
 // =============================================
@@ -101,28 +114,37 @@ function updateProgressUI() {
   const doneCount = todayDone.length;
   const pct = allCount === 0 ? 0 : Math.round((doneCount / allCount) * 100);
 
-  document.getElementById('today-summary').textContent = `${doneCount} / ${allCount}`;
-  document.getElementById('progress-value').textContent = `${pct}%`;
+  const todaySummaryEl = document.getElementById('today-summary');
+  if (todaySummaryEl) todaySummaryEl.textContent = `${doneCount} / ${allCount}`;
+
+  const progressValEl = document.getElementById('progress-value');
+  if (progressValEl) progressValEl.textContent = `${pct}%`;
 
   const circle = document.getElementById('progress-circle');
   if (circle) {
-    const circumference = 2 * Math.PI * 21; // r=21
+    const circumference = 2 * Math.PI * 19; // r=19
     const offset = circumference * (1 - pct / 100);
     circle.style.strokeDasharray = circumference;
     circle.style.strokeDashoffset = offset;
   }
 
   const streak = updateStreak();
-  document.getElementById('streak-count').textContent = `${streak} ${streak === 1 ? 'يوم' : 'أيام'}`;
+  const streakEl = document.getElementById('streak-count');
+  if (streakEl) streakEl.textContent = `${streak} ${streak === 1 ? 'يوم' : 'أيام'}`;
 
   // Quick summary chips
   const pendingCount = tasks.filter(t => !t.completed).length;
   const completedCount = tasks.filter(t => t.completed).length;
   const urgentCount = tasks.filter(t => !t.completed && t.priority === 'high').length;
 
-  document.getElementById('pending-chip-count').textContent = pendingCount;
-  document.getElementById('completed-chip-count').textContent = completedCount;
-  document.getElementById('urgent-chip-count').textContent = urgentCount;
+  const pendingEl = document.getElementById('pending-chip-count');
+  if (pendingEl) pendingEl.textContent = pendingCount;
+
+  const completedEl = document.getElementById('completed-chip-count');
+  if (completedEl) completedEl.textContent = completedCount;
+
+  const urgentEl = document.getElementById('urgent-chip-count');
+  if (urgentEl) urgentEl.textContent = urgentCount;
 }
 
 // =============================================
@@ -169,6 +191,7 @@ function getFilteredTasks() {
 
 function renderTasks() {
   const list = document.getElementById('tasks-list');
+  if (!list) return;
   const filtered = getFilteredTasks();
 
   list.classList.toggle('grid-mode', isGridMode);
@@ -178,7 +201,7 @@ function renderTasks() {
       <div class="empty-state">
         <span class="empty-icon">📋</span>
         <h3>لا توجد مهام ${activeView === 'today' ? 'اليوم' : ''}</h3>
-        <p>اضغط على زر + لإضافة مهمة جديدة</p>
+        <p>اضغط على زر + أو اختر من الإضافة السريعة أعلاه 🚀</p>
       </div>`;
     return;
   }
@@ -211,7 +234,7 @@ function createTaskCard(task) {
   const subPct = subtasksTotal > 0 ? Math.round((subtasksDone / subtasksTotal) * 100) : 0;
 
   const dueText = task.dueDate
-    ? `<span class="due-time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="12" height="12" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg> ${formatDue(task.dueDate, task.dueTime)}</span>`
+    ? `<span class="due-time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="12" height="12" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg> ${formatDue(task.dueDate)}</span>`
     : '';
 
   const subtasksBar = subtasksTotal > 0 ? `
@@ -256,14 +279,13 @@ function createTaskCard(task) {
     </div>`;
 }
 
-function formatDue(date, time) {
+function formatDue(date) {
   if (!date) return '';
-  const d = new Date(date + (time ? `T${time}` : ''));
+  const d = new Date(date);
   const now = new Date();
   const diff = d - now;
   if (diff < 0) return `⚠️ متأخرة`;
-  if (diff < 3600000) return `⏰ خلال أقل من ساعة`;
-  return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' }) + (time ? ` - ${time}` : '');
+  return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
 }
 
 function escapeHtml(str) {
@@ -312,14 +334,13 @@ function addTask(data) {
   const task = {
     id: `task_${Date.now()}_${Math.random().toString(36).slice(2)}`,
     title: data.title.trim(),
-    description: data.description.trim(),
-    category: data.category,
-    priority: data.priority,
+    description: (data.description || '').trim(),
+    category: data.category || 'personal',
+    priority: data.priority || 'medium',
     dueDate: data.dueDate || null,
-    dueTime: data.dueTime || null,
     completed: false,
     createdAt: new Date().toISOString(),
-    subtasks: data.subtasks.filter(s => s.text.trim()).map(s => ({ text: s.text.trim(), done: false })),
+    subtasks: (data.subtasks || []).filter(s => s.text && s.text.trim()).map(s => ({ text: s.text.trim(), done: false })),
   };
   tasks.unshift(task);
   saveData();
@@ -333,12 +354,11 @@ function updateTask(id, data) {
   tasks[idx] = {
     ...tasks[idx],
     title: data.title.trim(),
-    description: data.description.trim(),
+    description: (data.description || '').trim(),
     category: data.category,
     priority: data.priority,
     dueDate: data.dueDate || null,
-    dueTime: data.dueTime || null,
-    subtasks: data.subtasks.filter(s => s.text.trim()).map(s => ({ text: s.text.trim(), done: false })),
+    subtasks: (data.subtasks || []).filter(s => s.text && s.text.trim()).map(s => ({ text: s.text.trim(), done: false })),
   };
   saveData();
   renderTasks();
@@ -702,6 +722,15 @@ document.addEventListener('DOMContentLoaded', () => {
   renderTasks();
   updateProgressUI();
 
+  // Template Quick Chips Handler (1-tap add task)
+  document.querySelectorAll('.template-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const title = btn.dataset.template;
+      const category = btn.dataset.category || 'personal';
+      addTask({ title, category, priority: 'medium', description: '', subtasks: [] });
+    });
+  });
+
   // Layout Toggle Button
   const layoutBtn = document.getElementById('layout-toggle-btn');
   if (layoutBtn) {
@@ -789,7 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Modal: Detail Close
   document.getElementById('detail-close-btn').addEventListener('click', closeDetailModal);
   document.getElementById('detail-modal').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('detail-modal')) closeDetailModal();
+    if (e.target === document.target) closeDetailModal();
   });
 
   // Add Subtask Input
@@ -819,7 +848,7 @@ document.addEventListener('DOMContentLoaded', () => {
       title,
       description: document.getElementById('task-desc-input').value,
       category: document.getElementById('task-category-input').value,
-      priority: document.querySelector('input[name="priority"]:checked')?.value || 'medium',
+      priority: document.querySelector('input[name="priority"][value="${task.priority}"]')?.value || 'medium',
       dueDate: document.getElementById('task-date-input').value,
       subtasks: Array.from(document.querySelectorAll('.subtask-input')).map(i => ({ text: i.value })),
     };
