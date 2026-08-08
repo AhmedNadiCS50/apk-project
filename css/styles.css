@@ -315,7 +315,7 @@ body { display: flex; justify-content: center; align-items: flex-start; }
   display: flex; flex-direction: column;
   position: relative;
   box-shadow: var(--shadow-lg);
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
   padding-top: env(safe-area-inset-top, 0px);
   z-index: 1;
   transition: background 0.5s ease;
@@ -985,12 +985,12 @@ body { display: flex; justify-content: center; align-items: flex-start; }
 }
 
 /* ═══════════════════════════════════════
-   FAB BUTTON – Morphing glow ring
+   FAB BUTTON – Morphing glow ring (RTL Right Aligned)
    ═══════════════════════════════════════ */
 .fab-btn {
   position: fixed;
-  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
-  left: calc(50% - 210px);
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  right: 22px; left: auto;
   width: 58px; height: 58px;
   border-radius: var(--radius-full);
   background: linear-gradient(135deg, var(--primary), var(--secondary));
@@ -1007,8 +1007,9 @@ body { display: flex; justify-content: center; align-items: flex-start; }
   50%      { box-shadow: 0 8px 28px var(--primary-glow), 0 0 0 10px rgba(13,148,136,0); }
 }
 
-@media (max-width: 520px) { .fab-btn { left: 20px; } }
-@media (min-width: 768px) { .fab-btn { left: calc(50% - 340px); } }
+@media (min-width: 768px) {
+  .fab-btn { right: calc(50% - 360px); left: auto; }
+}
 
 .fab-btn:hover, .fab-btn:active {
   transform: scale(1.15) rotate(90deg);
