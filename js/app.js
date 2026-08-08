@@ -2968,12 +2968,15 @@ const BOT_DELAY_MS = 700;
 // ─── UI Helpers ───
 function openChatbot() {
   const panel = document.getElementById('chatbot-panel');
+  const overlay = document.getElementById('chatbot-overlay');
   if (!panel) return;
   chatbotOpen = true;
   panel.style.display = 'flex';
   panel.style.flexDirection = 'column';
-  panel.style.animation = 'chatPanelIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both';
-  document.getElementById('chatbot-unread-dot').style.display = 'none';
+  panel.style.animation = 'chatPanelSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both';
+  if (overlay && window.innerWidth <= 480) overlay.style.display = 'block';
+  const dot = document.getElementById('chatbot-unread-dot');
+  if (dot) dot.style.display = 'none';
   if (chatHistory.length === 0) {
     const greeting = getGreeting();
     appendBotMessage(greeting, false);
@@ -2987,10 +2990,19 @@ function openChatbot() {
 
 function closeChatbot() {
   const panel = document.getElementById('chatbot-panel');
+  const overlay = document.getElementById('chatbot-overlay');
   if (!panel) return;
   chatbotOpen = false;
-  panel.style.animation = 'none';
   panel.style.display = 'none';
+  if (overlay) overlay.style.display = 'none';
+}
+
+function clearChatbot() {
+  chatHistory = [];
+  const msgs = document.getElementById('chatbot-messages');
+  if (msgs) msgs.innerHTML = '';
+  const greeting = getGreeting();
+  appendBotMessage(greeting, false);
 }
 
 function scrollChatToBottom() {
@@ -3182,6 +3194,8 @@ document.addEventListener('DOMContentLoaded', () => {
     chatbotOpen ? closeChatbot() : openChatbot();
   });
   document.getElementById('chatbot-close-btn')?.addEventListener('click', closeChatbot);
+  document.getElementById('chatbot-overlay')?.addEventListener('click', closeChatbot);
+  document.getElementById('chatbot-clear-btn')?.addEventListener('click', clearChatbot);
   document.getElementById('chatbot-send-btn')?.addEventListener('click', sendChatMessage);
   document.getElementById('chatbot-input')?.addEventListener('keyup', (e) => {
     if (e.key === 'Enter') sendChatMessage();

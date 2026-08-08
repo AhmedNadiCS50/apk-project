@@ -1,5 +1,5 @@
-// TaskFlow Service Worker v23 – Flow AI UI Layout Fix
-const CACHE_NAME = 'taskflow-cache-v23';
+// TaskFlow Service Worker v24 – Ultra-Premium Glassmorphism Flow AI Chatbot
+const CACHE_NAME = 'taskflow-cache-v24';
 const ASSETS = [
   './',
   './index.html',
