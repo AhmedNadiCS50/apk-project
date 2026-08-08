@@ -1,10 +1,10 @@
-// TaskFlow Service Worker v6 - Network First + Push Notification Support
-const CACHE_NAME = 'taskflow-cache-v6';
+// TaskFlow Service Worker v9 - Network First + Push Notification Support
+const CACHE_NAME = 'taskflow-cache-v9';
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=6',
-  './js/app.js?v=6',
+  './css/styles.css?v=9',
+  './js/app.js?v=9',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'

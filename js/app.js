@@ -1,5 +1,5 @@
 // =============================================
-//  TaskFlow – Advanced Features & Alarm Logic
+//  TaskFlow v9 – Architecture & Logic Fixes
 // =============================================
 
 const DB_KEY = 'taskflow_data';
@@ -8,10 +8,9 @@ const COLOR_THEME_KEY = 'taskflow_color_theme';
 const LAYOUT_MODE_KEY = 'taskflow_layout_mode';
 const STREAK_KEY = 'taskflow_streak';
 const ALARM_KEY = 'taskflow_alarm_enabled';
+const MEMOS_KEY = 'taskflow_voice_memos';
 
-// =============================================
-//  State
-// =============================================
+// Global State
 let tasks = [];
 let currentFilter = { category: 'all', status: 'all', search: '' };
 let editingTaskId = null;
@@ -20,18 +19,17 @@ let isGridMode = false;
 let dbInstance = null;
 let alarmEnabled = false;
 
-// Pomodoro Timer State
+// Timers State
 let pomoSeconds = 25 * 60;
 let pomoInterval = null;
 let isPomoRunning = false;
 
-// Per-Task Timer & Alarm State
 let activeTimerTaskId = null;
 let activeRingingTaskId = null;
 let alarmAudioLoopInterval = null;
 
 // =============================================
-//  IndexedDB + LocalStorage Dual-Engine Storage
+//  IndexedDB + LocalStorage Dual Storage Engine
 // =============================================
 function initIndexedDB() {
   return new Promise((resolve) => {
@@ -107,8 +105,6 @@ function updateDatabaseInfoUI() {
 function initAlarmSystem() {
   alarmEnabled = localStorage.getItem(ALARM_KEY) === 'true';
   updateAlarmBtnUI();
-
-  // Check due tasks & active countdown timers every 1 second
   setInterval(checkDueAlarmsAndTimers, 1000);
 }
 
@@ -192,7 +188,6 @@ function checkDueAlarmsAndTimers() {
     if (task.timerTargetTimestamp && !task.alarmRingTriggered) {
       const remainingMs = task.timerTargetTimestamp - now;
 
-      // Update badge element if visible
       const badgeEl = document.getElementById(`countdown-${task.id}`);
       if (badgeEl) {
         if (remainingMs > 0) {
@@ -209,7 +204,7 @@ function checkDueAlarmsAndTimers() {
       }
     }
 
-    // 2. Check scheduled due time (e.g. 14:30) for today
+    // 2. Check scheduled due time for today
     if (alarmEnabled && task.dueDate === todayStr && task.dueTime === nowTimeStr && !task.alarmRingTriggered) {
       task.alarmRingTriggered = true;
       saveData();
@@ -228,7 +223,6 @@ function formatCountdownMs(ms) {
   return `${mins}:${secs}`;
 }
 
-// Trigger ringing alarm popup modal + sound
 function triggerTaskAlarmPopup(task) {
   activeRingingTaskId = task.id;
   const titleEl = document.getElementById('alarm-alert-task-title');
@@ -377,7 +371,7 @@ function resetPomoTimer() {
 }
 
 // =============================================
-//  Voice Speech Input (Arabic Web Speech API)
+//  Voice Speech Input
 // =============================================
 function startVoiceRecognition(targetInputId) {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -503,7 +497,7 @@ function updateProgressUI() {
 
   const circle = document.getElementById('progress-circle');
   if (circle) {
-    const circumference = 2 * Math.PI * 19; // r=19 → ~119.4
+    const circumference = 2 * Math.PI * 19;
     const offset = circumference * (1 - pct / 100);
     circle.setAttribute('stroke-dasharray', circumference.toFixed(1));
     circle.setAttribute('stroke-dashoffset', offset.toFixed(1));
@@ -620,9 +614,7 @@ function renderTasks() {
     });
   });
 
-  // Attach Swipe Gestures
   attachSwipeGestures();
-
   updateProgressUI();
 }
 
@@ -704,8 +696,7 @@ function createTaskCard(task) {
 function formatDue(date) {
   if (!date) return '';
   const d = new Date(date);
-  const now = new Date();
-  const diff = d - now;
+  const diff = d - new Date();
   if (diff < 0) return `⚠️ متأخرة`;
   return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
 }
@@ -877,7 +868,7 @@ function openDetailModal(id) {
         <span class="tag-badge category">${cat.icon} ${cat.label}</span>
         <span class="tag-badge category">${task.completed ? '✅ مكتملة' : '⏳ قيد التنفيذ'}</span>
       </div>
-      ${task.dueDate ? `<p style="font-size:0.82rem;color:var(--text-muted)">📅 الموعد: ${formatDue(task.dueDate)}</p>` : ''}
+      ${task.dueDate ? `<p style="font-size:0.82rem;color:var(--text-muted)">📅 الموعد: ${formatDue(task.dueDate)} ${task.dueTime ? task.dueTime : ''}</p>` : ''}
       <p style="font-size:0.78rem;color:var(--text-muted);margin-top:6px">🕐 أُنشئت: ${new Date(task.createdAt).toLocaleDateString('ar-EG', { weekday:'long', year:'numeric', month:'long', day:'numeric'})}</p>
       ${subtasksHtml}
       <div style="display:flex;gap:8px;margin-top:20px">
@@ -905,7 +896,7 @@ function closeDetailModal() {
 }
 
 // =============================================
-//  Stats & Weekly Canvas Chart
+//  Stats & Canvas Chart
 // =============================================
 function renderStats() {
   const total = tasks.length;
@@ -914,39 +905,41 @@ function renderStats() {
   const streak = getStreakData().days;
 
   const statsEl = document.getElementById('stats-grid');
-  statsEl.innerHTML = [
-    { label: 'إجمالي المهام', value: total, icon: '📋', color: 'var(--primary)' },
-    { label: 'مكتملة', value: completed, icon: '✅', color: 'var(--success)' },
-    { label: 'قيد التنفيذ', value: pending, icon: '⏳', color: 'var(--warning)' },
-    { label: 'سلسلة الإنجاز', value: `${streak} 🔥`, icon: '🔥', color: 'var(--accent)' },
-  ].map(s => `
-    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;text-align:center;box-shadow:var(--shadow-sm)">
-      <div style="font-size:2rem;margin-bottom:6px">${s.icon}</div>
-      <div style="font-size:1.5rem;font-weight:800;color:${s.color};margin-bottom:4px">${s.value}</div>
-      <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600">${s.label}</div>
-    </div>`).join('');
+  if (statsEl) {
+    statsEl.innerHTML = [
+      { label: 'إجمالي المهام', value: total, icon: '📋', color: 'var(--primary)' },
+      { label: 'مكتملة', value: completed, icon: '✅', color: 'var(--success)' },
+      { label: 'قيد التنفيذ', value: pending, icon: '⏳', color: 'var(--warning)' },
+      { label: 'سلسلة الإنجاز', value: `${streak} 🔥`, icon: '🔥', color: 'var(--accent)' },
+    ].map(s => `
+      <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;text-align:center;box-shadow:var(--shadow-sm)">
+        <div style="font-size:2rem;margin-bottom:6px">${s.icon}</div>
+        <div style="font-size:1.5rem;font-weight:800;color:${s.color};margin-bottom:4px">${s.value}</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600">${s.label}</div>
+      </div>`).join('');
+  }
 
-  // Draw Canvas Weekly Bar Chart
   drawWeeklyChart();
 
-  // Category Breakdown
   const catBreakdown = document.getElementById('category-breakdown');
-  const catCounts = {};
-  tasks.forEach(t => { catCounts[t.category] = (catCounts[t.category] || 0) + 1; });
-  catBreakdown.innerHTML = `
-    <p style="font-size:0.85rem;font-weight:700;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.05em">التوزيع حسب التصنيف</p>
-    ${Object.entries(catCounts).map(([cat, count]) => {
-      const c = categoryMap[cat] || { label: cat, icon: '📌' };
-      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-      return `<div style="margin-bottom:12px">
-        <div style="display:flex;justify-content:space-between;font-size:0.88rem;margin-bottom:6px">
-          <span>${c.icon} ${c.label}</span><span style="font-weight:700">${count} (${pct}%)</span>
-        </div>
-        <div style="height:7px;background:var(--surface-hover);border-radius:999px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:var(--primary);transition:width 0.5s ease;border-radius:999px"></div>
-        </div>
-      </div>`;
-    }).join('')}`;
+  if (catBreakdown) {
+    const catCounts = {};
+    tasks.forEach(t => { catCounts[t.category] = (catCounts[t.category] || 0) + 1; });
+    catBreakdown.innerHTML = `
+      <p style="font-size:0.85rem;font-weight:700;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.05em">التوزيع حسب التصنيف</p>
+      ${Object.entries(catCounts).map(([cat, count]) => {
+        const c = categoryMap[cat] || { label: cat, icon: '📌' };
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        return `<div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;font-size:0.88rem;margin-bottom:6px">
+            <span>${c.icon} ${c.label}</span><span style="font-weight:700">${count} (${pct}%)</span>
+          </div>
+          <div style="height:7px;background:var(--surface-hover);border-radius:999px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:var(--primary);transition:width 0.5s ease;border-radius:999px"></div>
+          </div>
+        </div>`;
+      }).join('')}`;
+  }
 }
 
 function drawWeeklyChart() {
@@ -981,22 +974,21 @@ function drawWeeklyChart() {
     const barH = (counts[i] / maxVal) * chartHeight;
     const y = height - padding - barH;
 
-    // Bar background track
     ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
     ctx.beginPath();
-    ctx.roundRect(x, padding, barWidth, chartHeight, 6);
+    if (ctx.roundRect) ctx.roundRect(x, padding, barWidth, chartHeight, 6);
+    else ctx.rect(x, padding, barWidth, chartHeight);
     ctx.fill();
 
-    // Active fill bar
     const grad = ctx.createLinearGradient(0, y, 0, height - padding);
     grad.addColorStop(0, '#0d9488');
     grad.addColorStop(1, '#2dd4bf');
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.roundRect(x, y, barWidth, Math.max(barH, 4), 6);
+    if (ctx.roundRect) ctx.roundRect(x, y, barWidth, Math.max(barH, 4), 6);
+    else ctx.rect(x, y, barWidth, Math.max(barH, 4));
     ctx.fill();
 
-    // Labels
     ctx.fillStyle = '#94a3b8';
     ctx.font = '600 10px Inter, sans-serif';
     ctx.textAlign = 'center';
@@ -1052,6 +1044,7 @@ function playCompleteSound() {
 
 function launchConfetti() {
   const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -1068,7 +1061,6 @@ function launchConfetti() {
     rotV: (Math.random() - 0.5) * 6,
   }));
 
-  let frame;
   let elapsed = 0;
 
   function draw() {
@@ -1086,7 +1078,7 @@ function launchConfetti() {
       p.vy += 0.08;
     });
     elapsed++;
-    if (elapsed < 150) frame = requestAnimationFrame(draw);
+    if (elapsed < 150) requestAnimationFrame(draw);
     else {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       canvas.style.display = 'none';
@@ -1097,6 +1089,7 @@ function launchConfetti() {
 
 function showToast(msg, type = 'info') {
   const container = document.getElementById('toast-container');
+  if (!container) return;
   const toast = document.createElement('div');
   toast.className = 'toast';
   const colors = { success: '#10b981', info: '#0d9488', error: '#ef4444' };
@@ -1111,10 +1104,12 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem(THEME_KEY, theme);
   const icon = document.getElementById('theme-icon');
-  if (theme === 'dark') {
-    icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
-  } else {
-    icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+  if (icon) {
+    if (theme === 'dark') {
+      icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+    } else {
+      icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+    }
   }
 }
 
@@ -1184,248 +1179,8 @@ function clearCompletedTasks() {
 }
 
 // =============================================
-//  Event Listeners
+//  Swipe Gestures & Voice Memos
 // =============================================
-document.addEventListener('DOMContentLoaded', () => {
-  loadData();
-  initAlarmSystem();
-
-  const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
-  applyTheme(savedTheme);
-
-  const savedColorTheme = localStorage.getItem(COLOR_THEME_KEY) || 'teal';
-  applyColorTheme(savedColorTheme);
-
-  isGridMode = localStorage.getItem(LAYOUT_MODE_KEY) === 'true';
-
-  updateGreeting();
-  updatePomoUI();
-
-  renderTasks();
-  updateProgressUI();
-
-  // Pomodoro Controls
-  document.getElementById('pomo-start-btn')?.addEventListener('click', togglePomoTimer);
-  document.getElementById('pomo-reset-btn')?.addEventListener('click', resetPomoTimer);
-
-  // Voice Input Buttons
-  document.getElementById('voice-input-btn')?.addEventListener('click', () => startVoiceRecognition('search-input'));
-  document.getElementById('modal-mic-btn')?.addEventListener('click', () => startVoiceRecognition('task-title-input'));
-
-  // Alarm Permission Button in Settings
-  document.getElementById('alarm-permission-btn')?.addEventListener('click', toggleAlarmPermission);
-
-  // Template Quick Chips
-  document.querySelectorAll('.template-chip').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const title = btn.dataset.template;
-      const category = btn.dataset.category || 'personal';
-      addTask({ title, category, priority: 'medium', description: '', subtasks: [] });
-    });
-  });
-
-  // Layout Toggle Button
-  const layoutBtn = document.getElementById('layout-toggle-btn');
-  if (layoutBtn) {
-    layoutBtn.classList.toggle('active', isGridMode);
-    layoutBtn.addEventListener('click', () => {
-      isGridMode = !isGridMode;
-      localStorage.setItem(LAYOUT_MODE_KEY, isGridMode);
-      layoutBtn.classList.toggle('active', isGridMode);
-      renderTasks();
-      showToast(isGridMode ? '📊 تم التبديل لعرّض الشبكة' : '📋 تم التبديل لعرّض القائمة', 'info');
-    });
-  }
-
-  // FAB – Add Task
-  document.getElementById('fab-btn').addEventListener('click', openAddModal);
-
-  // Theme Toggle
-  const toggleThemeHandler = () => {
-    const current = document.documentElement.getAttribute('data-theme');
-    applyTheme(current === 'dark' ? 'light' : 'dark');
-  };
-  document.getElementById('theme-toggle-btn').addEventListener('click', toggleThemeHandler);
-  document.getElementById('settings-theme-btn')?.addEventListener('click', toggleThemeHandler);
-
-  // Color Theme Swatches
-  document.querySelectorAll('.theme-swatch').forEach(swatch => {
-    swatch.addEventListener('click', () => {
-      applyColorTheme(swatch.dataset.color);
-      showToast('🎨 تم تغيير ثيم الألوان!', 'info');
-    });
-  });
-
-  // Export & Import Backup
-  document.getElementById('export-data-btn')?.addEventListener('click', exportData);
-
-  const importBtn = document.getElementById('import-trigger-btn');
-  const importInput = document.getElementById('import-file-input');
-  if (importBtn && importInput) {
-    importBtn.addEventListener('click', () => importInput.click());
-    importInput.addEventListener('change', (e) => {
-      if (e.target.files && e.target.files[0]) {
-        importData(e.target.files[0]);
-      }
-    });
-  }
-
-  document.getElementById('clear-completed-btn')?.addEventListener('click', clearCompletedTasks);
-
-  // Search Toggle
-  const searchBox = document.getElementById('search-box');
-  document.getElementById('search-toggle-btn').addEventListener('click', () => {
-    const isHidden = searchBox.style.display === 'none';
-    searchBox.style.display = isHidden ? 'block' : 'none';
-    if (isHidden) document.getElementById('search-input').focus();
-  });
-
-  document.getElementById('search-input').addEventListener('input', (e) => {
-    currentFilter.search = e.target.value;
-    renderTasks();
-  });
-
-  // Category Filter
-  document.getElementById('categories-filter').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-category]');
-    if (!btn) return;
-    document.querySelectorAll('[data-category]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentFilter.category = btn.dataset.category;
-    renderTasks();
-  });
-
-  // Status Tabs
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentFilter.status = btn.dataset.status;
-      renderTasks();
-    });
-  });
-
-  // Bottom Nav
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', () => {
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      item.classList.add('active');
-      showView(item.dataset.view);
-    });
-  });
-
-  // Modal Close
-  document.getElementById('modal-close-btn').addEventListener('click', closeTaskModal);
-  document.getElementById('task-modal').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('task-modal')) closeTaskModal();
-  });
-
-  document.getElementById('detail-close-btn').addEventListener('click', closeDetailModal);
-  document.getElementById('detail-modal').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('detail-modal')) closeDetailModal();
-  });
-
-  // Subtask Add
-  document.getElementById('add-subtask-btn').addEventListener('click', () => {
-    const count = document.querySelectorAll('.subtask-input').length + 1;
-    document.getElementById('subtasks-input-list').insertAdjacentHTML('beforeend', `
-      <div class="subtask-input-item">
-        <input type="text" class="form-control subtask-input" placeholder="مهمة فرعية ${count}..." />
-        <button type="button" class="action-icon-btn delete" onclick="this.parentElement.remove()" aria-label="حذف">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>`);
-    document.querySelector('.subtask-input:last-of-type')?.focus();
-  });
-
-  // Form Submit
-  document.getElementById('task-form').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const title = document.getElementById('task-title-input').value.trim();
-    if (!title) {
-      showToast('⚠️ يرجى إدخال عنوان المهمة', 'error');
-      document.getElementById('task-title-input').focus();
-      return;
-    }
-
-    const data = {
-      title,
-      description: document.getElementById('task-desc-input').value,
-      category: document.getElementById('task-category-input').value,
-      priority: document.querySelector('input[name="priority"]:checked')?.value || 'medium',
-      dueDate: document.getElementById('task-date-input').value,
-      dueTime: document.getElementById('task-time-input')?.value || null,
-      subtasks: Array.from(document.querySelectorAll('.subtask-input')).map(i => ({ text: i.value })),
-    };
-
-    if (editingTaskId) {
-      updateTask(editingTaskId, data);
-    } else {
-      addTask(data);
-    }
-    closeTaskModal();
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      closeTaskModal();
-      closeDetailModal();
-      closeTimerModal();
-      dismissAlarmPopup('only');
-    }
-  });
-
-  // Timer Modal Controls
-  document.querySelectorAll('.quick-timer-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      setTaskTimer(parseInt(btn.dataset.mins));
-    });
-  });
-
-  document.getElementById('custom-timer-start-btn')?.addEventListener('click', () => {
-    const val = parseInt(document.getElementById('custom-timer-input').value);
-    if (!val || val <= 0) {
-      showToast('⚠️ يرجى كتابة عدد الدقائق بصورة صحيحة', 'error');
-      return;
-    }
-    setTaskTimer(val);
-  });
-
-  document.getElementById('cancel-timer-btn')?.addEventListener('click', cancelActiveTaskTimer);
-  document.getElementById('timer-close-btn')?.addEventListener('click', closeTimerModal);
-  document.getElementById('timer-modal')?.addEventListener('click', (e) => {
-    if (e.target === document.getElementById('timer-modal')) closeTimerModal();
-  });
-
-  // Alarm Ringing Popup Controls
-  document.getElementById('alarm-dismiss-done-btn')?.addEventListener('click', () => dismissAlarmPopup('done'));
-  document.getElementById('alarm-dismiss-only-btn')?.addEventListener('click', () => dismissAlarmPopup('only'));
-
-  // Record Voice Memo Button
-  document.getElementById('record-memo-btn')?.addEventListener('click', recordQuickVoiceMemo);
-  renderMemos();
-
-  // Background Particles Canvas Initialization
-  initParticleCanvas();
-
-  // Button Ripple Effect
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.icon-btn, .btn-primary');
-    if (!btn) return;
-    const circle = document.createElement('span');
-    circle.classList.add('ripple');
-    const rect = btn.getBoundingClientRect();
-    const size = Math.max(rect.width, rect.height);
-    circle.style.width = circle.style.height = `${size}px`;
-    circle.style.left = `${e.clientX - rect.left - size / 2}px`;
-    circle.style.top = `${e.clientY - rect.top - size / 2}px`;
-    btn.appendChild(circle);
-    setTimeout(() => circle.remove(), 600);
-  });
-
-// ═══════════════════════════════════════
-// SWIPE GESTURES ON TASK CARDS
-// ═══════════════════════════════════════
 function attachSwipeGestures() {
   document.querySelectorAll('.task-card').forEach(card => {
     let startX = 0;
@@ -1457,10 +1212,8 @@ function attachSwipeGestures() {
       card.classList.remove('swiping-right', 'swiping-left');
 
       if (diffX > 90) {
-        // Swipe Right -> Complete task
         toggleTask(taskId);
       } else if (diffX < -90) {
-        // Swipe Left -> Open timer modal
         openTimerModal(taskId);
       }
       diffX = 0;
@@ -1471,11 +1224,6 @@ function attachSwipeGestures() {
     card.addEventListener('touchend', onEnd);
   });
 }
-
-// ═══════════════════════════════════════
-// STICKY VOICE MEMOS LOGIC
-// ═══════════════════════════════════════
-const MEMOS_KEY = 'taskflow_voice_memos';
 
 function getMemos() {
   try { return JSON.parse(localStorage.getItem(MEMOS_KEY)) || []; }
@@ -1559,6 +1307,253 @@ function deleteMemo(idx) {
   saveMemos(memos);
   renderMemos();
 }
+
+// Bind global functions to window explicitly for inline onclick handlers
+window.toggleTask = toggleTask;
+window.deleteTask = deleteTask;
+window.openEditModal = openEditModal;
+window.openDetailModal = openDetailModal;
+window.closeDetailModal = closeDetailModal;
+window.convertMemoToTask = convertMemoToTask;
+window.deleteMemo = deleteMemo;
+
+// =============================================
+//  DOMContentLoaded Initialization
+// =============================================
+document.addEventListener('DOMContentLoaded', () => {
+  loadData();
+  initAlarmSystem();
+
+  const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+  applyTheme(savedTheme);
+
+  const savedColorTheme = localStorage.getItem(COLOR_THEME_KEY) || 'teal';
+  applyColorTheme(savedColorTheme);
+
+  isGridMode = localStorage.getItem(LAYOUT_MODE_KEY) === 'true';
+
+  updateGreeting();
+  updatePomoUI();
+  renderTasks();
+  updateProgressUI();
+
+  // Pomodoro Controls
+  document.getElementById('pomo-start-btn')?.addEventListener('click', togglePomoTimer);
+  document.getElementById('pomo-reset-btn')?.addEventListener('click', resetPomoTimer);
+
+  // Voice Input Buttons
+  document.getElementById('voice-input-btn')?.addEventListener('click', () => startVoiceRecognition('search-input'));
+  document.getElementById('modal-mic-btn')?.addEventListener('click', () => startVoiceRecognition('task-title-input'));
+
+  // Alarm Permission Button
+  document.getElementById('alarm-permission-btn')?.addEventListener('click', toggleAlarmPermission);
+
+  // Template Quick Chips
+  document.querySelectorAll('.template-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const title = btn.dataset.template;
+      const category = btn.dataset.category || 'personal';
+      addTask({ title, category, priority: 'medium', description: '', subtasks: [] });
+    });
+  });
+
+  // Layout Toggle
+  const layoutBtn = document.getElementById('layout-toggle-btn');
+  if (layoutBtn) {
+    layoutBtn.classList.toggle('active', isGridMode);
+    layoutBtn.addEventListener('click', () => {
+      isGridMode = !isGridMode;
+      localStorage.setItem(LAYOUT_MODE_KEY, isGridMode);
+      layoutBtn.classList.toggle('active', isGridMode);
+      renderTasks();
+      showToast(isGridMode ? '📊 تم التبديل لعرّض الشبكة' : '📋 تم التبديل لعرّض القائمة', 'info');
+    });
+  }
+
+  // FAB
+  document.getElementById('fab-btn')?.addEventListener('click', openAddModal);
+
+  // Theme Toggle
+  const toggleThemeHandler = () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+  };
+  document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleThemeHandler);
+  document.getElementById('settings-theme-btn')?.addEventListener('click', toggleThemeHandler);
+
+  // Swatches
+  document.querySelectorAll('.theme-swatch').forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      applyColorTheme(swatch.dataset.color);
+      showToast('🎨 تم تغيير ثيم الألوان!', 'info');
+    });
+  });
+
+  // Backup
+  document.getElementById('export-data-btn')?.addEventListener('click', exportData);
+  const importBtn = document.getElementById('import-trigger-btn');
+  const importInput = document.getElementById('import-file-input');
+  if (importBtn && importInput) {
+    importBtn.addEventListener('click', () => importInput.click());
+    importInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        importData(e.target.files[0]);
+      }
+    });
+  }
+
+  document.getElementById('clear-completed-btn')?.addEventListener('click', clearCompletedTasks);
+
+  // Search Toggle
+  const searchBox = document.getElementById('search-box');
+  document.getElementById('search-toggle-btn')?.addEventListener('click', () => {
+    const isHidden = searchBox.style.display === 'none';
+    searchBox.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) document.getElementById('search-input')?.focus();
+  });
+
+  document.getElementById('search-input')?.addEventListener('input', (e) => {
+    currentFilter.search = e.target.value;
+    renderTasks();
+  });
+
+  // Category Filter
+  document.getElementById('categories-filter')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-category]');
+    if (!btn) return;
+    document.querySelectorAll('[data-category]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter.category = btn.dataset.category;
+    renderTasks();
+  });
+
+  // Status Tabs
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter.status = btn.dataset.status;
+      renderTasks();
+    });
+  });
+
+  // Bottom Nav
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      item.classList.add('active');
+      showView(item.dataset.view);
+    });
+  });
+
+  // Modals Close
+  document.getElementById('modal-close-btn')?.addEventListener('click', closeTaskModal);
+  document.getElementById('task-modal')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('task-modal')) closeTaskModal();
+  });
+
+  document.getElementById('detail-close-btn')?.addEventListener('click', closeDetailModal);
+  document.getElementById('detail-modal')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('detail-modal')) closeDetailModal();
+  });
+
+  // Subtask Add Button
+  document.getElementById('add-subtask-btn')?.addEventListener('click', () => {
+    const count = document.querySelectorAll('.subtask-input').length + 1;
+    document.getElementById('subtasks-input-list')?.insertAdjacentHTML('beforeend', `
+      <div class="subtask-input-item">
+        <input type="text" class="form-control subtask-input" placeholder="مهمة فرعية ${count}..." />
+        <button type="button" class="action-icon-btn delete" onclick="this.parentElement.remove()" aria-label="حذف">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>`);
+    document.querySelector('.subtask-input:last-of-type')?.focus();
+  });
+
+  // Form Submit
+  document.getElementById('task-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const title = document.getElementById('task-title-input').value.trim();
+    if (!title) {
+      showToast('⚠️ يرجى إدخال عنوان المهمة', 'error');
+      document.getElementById('task-title-input').focus();
+      return;
+    }
+
+    const data = {
+      title,
+      description: document.getElementById('task-desc-input').value,
+      category: document.getElementById('task-category-input').value,
+      priority: document.querySelector('input[name="priority"]:checked')?.value || 'medium',
+      dueDate: document.getElementById('task-date-input').value,
+      dueTime: document.getElementById('task-time-input')?.value || null,
+      subtasks: Array.from(document.querySelectorAll('.subtask-input')).map(i => ({ text: i.value })),
+    };
+
+    if (editingTaskId) {
+      updateTask(editingTaskId, data);
+    } else {
+      addTask(data);
+    }
+    closeTaskModal();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeTaskModal();
+      closeDetailModal();
+      closeTimerModal();
+      dismissAlarmPopup('only');
+    }
+  });
+
+  // Timer Modal Controls
+  document.querySelectorAll('.quick-timer-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setTaskTimer(parseInt(btn.dataset.mins));
+    });
+  });
+
+  document.getElementById('custom-timer-start-btn')?.addEventListener('click', () => {
+    const val = parseInt(document.getElementById('custom-timer-input').value);
+    if (!val || val <= 0) {
+      showToast('⚠️ يرجى كتابة عدد الدقائق بصورة صحيحة', 'error');
+      return;
+    }
+    setTaskTimer(val);
+  });
+
+  document.getElementById('cancel-timer-btn')?.addEventListener('click', cancelActiveTaskTimer);
+  document.getElementById('timer-close-btn')?.addEventListener('click', closeTimerModal);
+  document.getElementById('timer-modal')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('timer-modal')) closeTimerModal();
+  });
+
+  // Alarm Popup Dismiss Buttons
+  document.getElementById('alarm-dismiss-done-btn')?.addEventListener('click', () => dismissAlarmPopup('done'));
+  document.getElementById('alarm-dismiss-only-btn')?.addEventListener('click', () => dismissAlarmPopup('only'));
+
+  // Record Voice Memo Button
+  document.getElementById('record-memo-btn')?.addEventListener('click', recordQuickVoiceMemo);
+  renderMemos();
+
+  // Background Particles Canvas
+  initParticleCanvas();
+
+  // Button Ripple Effect
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.icon-btn, .btn-primary');
+    if (!btn) return;
+    const circle = document.createElement('span');
+    circle.classList.add('ripple');
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    circle.style.width = circle.style.height = `${size}px`;
+    circle.style.left = `${e.clientX - rect.left - size / 2}px`;
+    circle.style.top = `${e.clientY - rect.top - size / 2}px`;
+    btn.appendChild(circle);
+    setTimeout(() => circle.remove(), 600);
+  });
 });
 
 // Ambient Background Particle Canvas System
