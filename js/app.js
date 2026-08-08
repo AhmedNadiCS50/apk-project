@@ -202,6 +202,9 @@ function updatePomoUI() {
 
   const startBtn = document.getElementById('pomo-start-btn');
   if (startBtn) startBtn.textContent = isPomoRunning ? '⏸️ إيقاف' : '▶️ ابدأ';
+
+  const pomoCard = document.querySelector('.pomo-card');
+  if (pomoCard) pomoCard.classList.toggle('running', isPomoRunning);
 }
 
 function togglePomoTimer() {
@@ -1175,7 +1178,72 @@ document.addEventListener('DOMContentLoaded', () => {
       closeDetailModal();
     }
   });
+
+  // Background Particles Canvas Initialization
+  initParticleCanvas();
+
+  // Button Ripple Effect
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.icon-btn, .btn-primary');
+    if (!btn) return;
+    const circle = document.createElement('span');
+    circle.classList.add('ripple');
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    circle.style.width = circle.style.height = `${size}px`;
+    circle.style.left = `${e.clientX - rect.left - size / 2}px`;
+    circle.style.top = `${e.clientY - rect.top - size / 2}px`;
+    btn.appendChild(circle);
+    setTimeout(() => circle.remove(), 600);
+  });
 });
+
+// Ambient Background Particle Canvas System
+function initParticleCanvas() {
+  const canvas = document.getElementById('particle-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let width = (canvas.width = window.innerWidth);
+  let height = (canvas.height = window.innerHeight);
+
+  window.addEventListener('resize', () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  });
+
+  const particles = Array.from({ length: 35 }, () => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    radius: Math.random() * 2.5 + 1,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.4,
+    alpha: Math.random() * 0.5 + 0.2,
+  }));
+
+  function animate() {
+    ctx.clearRect(0, 0, width, height);
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(13, 148, 136, 0.35)';
+
+    particles.forEach((p) => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.globalAlpha = p.alpha;
+      ctx.fill();
+
+      p.x += p.vx;
+      p.y += p.vy;
+
+      if (p.x < 0) p.x = width;
+      if (p.x > width) p.x = 0;
+      if (p.y < 0) p.y = height;
+      if (p.y > height) p.y = 0;
+    });
+
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
