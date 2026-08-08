@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Readex+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=15" />
+  <link rel="stylesheet" href="css/styles.css?v=16" />
 </head>
 <body>
 
@@ -106,8 +106,9 @@
           </div>
           <p class="pomo-label" id="pomo-status-text">مؤقت التركيز</p>
           <div class="pomo-btns">
-            <button class="pomo-btn-main" id="pomo-start-btn">▶️</button>
-            <button class="pomo-btn-reset" id="pomo-reset-btn">🔄</button>
+            <button class="pomo-btn-main" id="pomo-start-btn" title="تشغيل / إيقاف">▶️</button>
+            <button class="pomo-btn-reset" id="pomo-reset-btn" title="إعادة تعيين">🔄</button>
+            <button class="pomo-btn-reset" id="open-focus-modal-btn" title="وضع التركيز سينمائي 🎧">🧘</button>
           </div>
         </div>
 
@@ -196,14 +197,44 @@
 
   </main>
 
+  <!-- ====== CALENDAR VIEW (REPLACES OLD TODAY VIEW) ====== -->
+  <div id="calendar-view" style="display:none;padding:18px 20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="font-size:1.15rem;font-weight:800;color:var(--text-main);margin:0;">📅 التقويم التفاعلي</h2>
+      <div style="display:flex;gap:6px;">
+        <button class="chip-btn" id="cal-prev-month" style="padding:6px 12px;margin:0;">❮</button>
+        <span id="cal-month-year-title" style="font-weight:800;font-size:0.95rem;color:var(--primary);display:flex;align-items:center;padding:0 8px;">أغسطس 2026</span>
+        <button class="chip-btn" id="cal-next-month" style="padding:6px 12px;margin:0;">❯</button>
+      </div>
+    </div>
+    <div class="calendar-card" style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);margin-bottom:16px;">
+      <div class="calendar-weekdays" style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-weight:700;font-size:0.75rem;color:var(--text-muted);margin-bottom:10px;">
+        <span>أحد</span><span>إثنين</span><span>ثلاثاء</span><span>أربعاء</span><span>خميس</span><span>جمعة</span><span>سبت</span>
+      </div>
+      <div class="calendar-days-grid" id="calendar-days-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;"></div>
+    </div>
+    <h3 id="selected-date-title" style="font-size:0.95rem;font-weight:700;color:var(--text-main);margin-bottom:12px;">مهام اليوم المحدد</h3>
+    <div id="calendar-selected-tasks-list" class="tasks-list"></div>
+  </div>
+
   <!-- ====== STATS VIEW ====== -->
   <div id="stats-view" style="display:none;padding:18px 20px;">
-    <h2 style="font-size:1.15rem;font-weight:800;margin-bottom:16px;color:var(--text-main);">📊 إحصائيات الأداء</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="font-size:1.15rem;font-weight:800;color:var(--text-main);margin:0;">📊 إحصائيات الأداء والأوسمة</h2>
+      <button class="chip-btn" id="share-stats-btn" style="background:var(--primary);color:#fff;margin:0;padding:8px 14px;">📸 مشاركة الإنجاز</button>
+    </div>
     <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
       <p style="font-size:0.88rem;font-weight:700;margin-bottom:10px;color:var(--text-main);">📈 معدل الإنجاز الأسبوعي</p>
       <canvas id="weekly-chart-canvas" height="150" style="width:100%;display:block;"></canvas>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="stats-grid"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;" id="stats-grid"></div>
+
+    <!-- Gamification & Badges Section -->
+    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;">
+      <h3 style="font-size:0.95rem;font-weight:800;color:var(--text-main);margin-bottom:12px;">🏆 خزانة الأوسمة والإنجازات</h3>
+      <div id="badges-container" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;"></div>
+    </div>
+
     <div style="margin-top:22px;" id="category-breakdown"></div>
   </div>
 
@@ -302,9 +333,9 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
       <span>المهام</span>
     </button>
-    <button class="nav-item" data-view="today" aria-label="اليوم">
+    <button class="nav-item" data-view="calendar" aria-label="التقويم">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      <span>اليوم</span>
+      <span>التقويم</span>
     </button>
     <button class="nav-item" data-view="stats" aria-label="الإحصائيات">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -371,7 +402,10 @@
         </div>
       </div>
       <div class="form-group">
-        <label>مهام فرعية</label>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+          <label style="margin:0;">مهام فرعية</label>
+          <button type="button" id="ai-subtask-btn" class="chip-btn" style="padding:4px 10px;font-size:0.72rem;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;border:none;">🤖 تجزئة بالذكاء الاصطناعي</button>
+        </div>
         <div class="subtasks-input-list" id="subtasks-input-list">
           <div class="subtask-input-item">
             <input type="text" class="form-control subtask-input" placeholder="مهمة فرعية 1..." />
@@ -450,6 +484,53 @@
   </div>
 </div>
 
-<script src="js/app.js?v=15"></script>
+<!-- FULL SCREEN FOCUS MODE MODAL -->
+<div class="modal-overlay" id="focus-fullscreen-modal" role="dialog" aria-modal="true" style="z-index:250;background:rgba(5,10,20,0.92);backdrop-filter:blur(30px);">
+  <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;position:relative;">
+    <button class="icon-btn" id="close-focus-modal-btn" style="position:absolute;top:24px;right:24px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div style="font-size:3rem;margin-bottom:12px;">🧘</div>
+    <h2 style="font-size:1.4rem;font-weight:900;color:var(--text-main);margin-bottom:6px;">جلسة التركيز العميق</h2>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:24px;">استمتع ببيئة خالية من المشتتات مع أصوات خلفية مريحة</p>
+
+    <!-- Large Pomodoro Counter Ring -->
+    <div style="font-size:3.6rem;font-weight:900;font-family:'Courier New',monospace;color:var(--primary);letter-spacing:4px;margin-bottom:24px;text-shadow:0 0 24px var(--primary-glow);" id="focus-modal-timer-display">25:00</div>
+
+    <!-- Ambient Sound Selector Buttons -->
+    <p style="font-size:0.8rem;color:var(--text-muted);font-weight:700;margin-bottom:10px;">🔊 اختر صوت الخلفية المحيطي:</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:30px;">
+      <button class="chip-btn ambient-sound-btn active" data-sound="none">🔇 صامت</button>
+      <button class="chip-btn ambient-sound-btn" data-sound="rain">🌧️ مطر</button>
+      <button class="chip-btn ambient-sound-btn" data-sound="forest">🌲 غابة</button>
+      <button class="chip-btn ambient-sound-btn" data-sound="ocean">🌊 محيط</button>
+      <button class="chip-btn ambient-sound-btn" data-sound="beats">🎧 بياتس</button>
+    </div>
+
+    <div style="display:flex;gap:14px;">
+      <button class="btn-primary" id="focus-modal-toggle-btn" style="padding:14px 36px;font-size:1.1rem;">▶️ ابدأ الجلسة</button>
+      <button class="chip-btn" id="focus-modal-reset-btn" style="padding:14px 20px;margin:0;">🔄 إعادة</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE ACHIEVEMENT CARD MODAL -->
+<div class="modal-overlay" id="share-card-modal" role="dialog" aria-modal="true">
+  <div class="modal-card" style="text-align:center;">
+    <div class="modal-header">
+      <h2>📸 بطاقة الإنجاز اليومية</h2>
+      <button class="icon-btn" id="share-modal-close-btn" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:14px;">جاهزة للمشاركة مع أصدقائك بضغطة زر!</p>
+    <canvas id="share-canvas" width="400" height="400" style="width:100%;max-width:320px;border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin-bottom:16px;display:inline-block;"></canvas>
+    <div style="display:flex;gap:10px;">
+      <button id="download-share-card-btn" class="btn-primary" style="margin:0;">📥 تنزيل الصورة</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js?v=16"></script>
 </body>
 </html>

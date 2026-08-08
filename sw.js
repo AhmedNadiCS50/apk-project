@@ -1,10 +1,10 @@
-// TaskFlow Service Worker v15 – Complete UI & Motion Overhaul
-const CACHE_NAME = 'taskflow-cache-v15';
+// TaskFlow Service Worker v16 – Calendar, Badges, Ambient Audio, AI Subtasks & Share Cards
+const CACHE_NAME = 'taskflow-cache-v16';
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=15',
-  './js/app.js?v=15',
+  './css/styles.css?v=16',
+  './js/app.js?v=16',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'

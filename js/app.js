@@ -466,8 +466,14 @@ function updatePomoUI() {
   const display = document.getElementById('pomo-timer-display');
   if (display) display.textContent = `${mins}:${secs}`;
 
+  const focusDisplay = document.getElementById('focus-modal-timer-display');
+  if (focusDisplay) focusDisplay.textContent = `${mins}:${secs}`;
+
   const startBtn = document.getElementById('pomo-start-btn');
   if (startBtn) startBtn.textContent = isPomoRunning ? '⏸️ إيقاف' : '▶️ ابدأ';
+
+  const focusToggleBtn = document.getElementById('focus-modal-toggle-btn');
+  if (focusToggleBtn) focusToggleBtn.textContent = isPomoRunning ? '⏸️ إيقاف الجلسة' : '▶️ ابدأ الجلسة';
 
   const pomoCard = document.querySelector('.pomo-card');
   if (pomoCard) pomoCard.classList.toggle('running', isPomoRunning);
@@ -669,24 +675,12 @@ const priorityMap = {
   low: { label: 'منخفضة', icon: '☕', cls: 'priority-low' },
 };
 
-function getTodayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function getFilteredTasks() {
-  const todayStr = getTodayStr();
   return tasks.filter(task => {
     const matchCat = currentFilter.category === 'all' || task.category === currentFilter.category;
     let matchStatus = true;
     if (currentFilter.status === 'completed') matchStatus = task.completed;
     else if (currentFilter.status === 'pending') matchStatus = !task.completed;
-
-    // "Today" view: show tasks created today OR with dueDate of today
-    if (activeView === 'today') {
-      const createdToday = isToday(task.createdAt);
-      const dueToday = task.dueDate === todayStr;
-      if (!createdToday && !dueToday) return false;
-    }
 
     const q = currentFilter.search.trim().toLowerCase();
     const matchSearch = !q || task.title.toLowerCase().includes(q) || (task.description || '').toLowerCase().includes(q);
@@ -861,9 +855,11 @@ function toggleTask(id) {
     if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
     showToast('✅ مهمة مكتملة! عمل رائع!', 'success');
     checkAllDone();
+    checkBadges();
   }
   saveData();
   renderTasks();
+  if (activeView === 'calendar') renderCalendar();
 }
 
 function toggleSubtask(taskId, subIdx) {
@@ -1183,18 +1179,25 @@ function drawWeeklyChart() {
 function showView(view) {
   activeView = view;
   const mainContent = document.querySelector('.app-content');
+  const calendarView = document.getElementById('calendar-view');
   const statsView = document.getElementById('stats-view');
   const settingsView = document.getElementById('settings-view');
   const fab = document.getElementById('fab-btn');
 
   mainContent.style.display = 'none';
+  if (calendarView) calendarView.style.display = 'none';
   statsView.style.display = 'none';
   settingsView.style.display = 'none';
 
-  if (view === 'stats') {
+  if (view === 'calendar') {
+    if (calendarView) calendarView.style.display = 'block';
+    fab.style.display = 'flex';
+    renderCalendar();
+  } else if (view === 'stats') {
     statsView.style.display = 'block';
     fab.style.display = 'none';
     renderStats();
+    renderBadges();
   } else if (view === 'settings') {
     settingsView.style.display = 'block';
     fab.style.display = 'none';
@@ -1902,3 +1905,354 @@ if ('serviceWorker' in navigator) {
       .catch(err => console.warn('SW registration failed:', err));
   });
 }
+
+// =============================================
+//  Calendar View System
+// =============================================
+let currentCalDate = new Date();
+let selectedCalDateStr = new Date().toISOString().slice(0, 10);
+
+function renderCalendar() {
+  const grid = document.getElementById('calendar-days-grid');
+  const titleEl = document.getElementById('cal-month-year-title');
+  if (!grid || !titleEl) return;
+
+  const year = currentCalDate.getFullYear();
+  const month = currentCalDate.getMonth();
+
+  const monthNames = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  titleEl.textContent = `${monthNames[month]} ${year}`;
+
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  const totalDays = new Date(year, month + 1, 0).getDate();
+
+  let html = '';
+
+  for (let i = 0; i < firstDayIndex; i++) {
+    html += `<div class="cal-day empty" style="padding:10px;opacity:0.2;"></div>`;
+  }
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  for (let d = 1; d <= totalDays; d++) {
+    const dayDateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
+    const dayTasks = tasks.filter(t => t.dueDate === dayDateStr || isTodayMatch(t.createdAt, dayDateStr));
+    const hasTasks = dayTasks.length > 0;
+    const isSelected = dayDateStr === selectedCalDateStr;
+    const isToday = dayDateStr === todayStr;
+
+    html += `
+      <div class="cal-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${hasTasks ? 'has-tasks' : ''}"
+           onclick="selectCalendarDate('${dayDateStr}')"
+           style="padding:10px 4px;border-radius:var(--radius-sm);cursor:pointer;position:relative;background:${isSelected ? 'var(--primary)' : (isToday ? 'var(--primary-light)' : 'var(--surface-hover)')};color:${isSelected ? '#fff' : 'var(--text-main)'};font-weight:${isSelected || isToday ? '800' : '600'};border:1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'};transition:var(--spring);">
+        <span>${d}</span>
+        ${hasTasks ? `<span style="position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:${isSelected ? '#fff' : 'var(--primary)'};"></span>` : ''}
+      </div>`;
+  }
+
+  grid.innerHTML = html;
+  renderSelectedCalDateTasks();
+}
+
+function isTodayMatch(dateStr, targetDateStr) {
+  if (!dateStr) return false;
+  return new Date(dateStr).toISOString().slice(0, 10) === targetDateStr;
+}
+
+function selectCalendarDate(dateStr) {
+  selectedCalDateStr = dateStr;
+  renderCalendar();
+}
+
+function renderSelectedCalDateTasks() {
+  const container = document.getElementById('calendar-selected-tasks-list');
+  const title = document.getElementById('selected-date-title');
+  if (!container) return;
+
+  const d = new Date(selectedCalDateStr + 'T00:00:00');
+  const dateFormatted = d.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  if (title) title.textContent = `📅 مهام يوم: ${dateFormatted}`;
+
+  const dayTasks = tasks.filter(t => t.dueDate === selectedCalDateStr || isTodayMatch(t.createdAt, selectedCalDateStr));
+
+  if (dayTasks.length === 0) {
+    container.innerHTML = `<div class="empty-state" style="padding:24px;"><p>لا توجد مهام محددة لهذا اليوم ☕</p></div>`;
+    return;
+  }
+
+  container.innerHTML = dayTasks.map(t => createTaskCard(t)).join('');
+}
+
+// =============================================
+//  Gamification & Badges System
+// =============================================
+const BADGES_KEY = 'taskflow_badges';
+
+const BADGES = [
+  { id: 'first_step', title: 'البداية القوية 🚀', desc: 'أكملت أول مهمة بنجاح', icon: '🌟' },
+  { id: 'streak_3', title: 'شعلة الإنجاز 🔥', desc: 'سلسلة إنجاز 3 أيام متتالية', icon: '🔥' },
+  { id: 'speed_demon', title: 'بطل السرعة ⚡', desc: 'أنجزت 5 مهام مكتملة', icon: '⚡' },
+  { id: 'planner', title: 'مخطط محترف 🎓', desc: 'أنجزت مهمة ذات مهام فرعية', icon: '🎓' },
+  { id: 'master_10', title: 'أسطورة الإنتاجية 🏆', desc: 'أنجزت 10 مهام بالكامل', icon: '🏆' },
+  { id: 'pomo_king', title: 'ملك التركيز 🧘', desc: 'أنهيت جلسة مؤقت التركيز', icon: '🧘' }
+];
+
+function getUnlockedBadges() {
+  try { return JSON.parse(localStorage.getItem(BADGES_KEY)) || []; }
+  catch { return []; }
+}
+
+function checkBadges() {
+  const unlocked = getUnlockedBadges();
+  const completedCount = tasks.filter(t => t.completed).length;
+  const streakDays = getStreakData().days;
+  const hasSubtaskCompleted = tasks.some(t => t.completed && t.subtasks && t.subtasks.length > 0);
+
+  const newUnlocks = [];
+
+  if (completedCount >= 1 && !unlocked.includes('first_step')) newUnlocks.push('first_step');
+  if (streakDays >= 3 && !unlocked.includes('streak_3')) newUnlocks.push('streak_3');
+  if (completedCount >= 5 && !unlocked.includes('speed_demon')) newUnlocks.push('speed_demon');
+  if (hasSubtaskCompleted && !unlocked.includes('planner')) newUnlocks.push('planner');
+  if (completedCount >= 10 && !unlocked.includes('master_10')) newUnlocks.push('master_10');
+
+  if (newUnlocks.length > 0) {
+    const updated = [...unlocked, ...newUnlocks];
+    localStorage.setItem(BADGES_KEY, JSON.stringify(updated));
+    const firstNew = BADGES.find(b => b.id === newUnlocks[0]);
+    if (firstNew) {
+      launchConfetti();
+      showToast(`🏆 وسام جديد: "${firstNew.title}"!`, 'success');
+    }
+  }
+}
+
+function renderBadges() {
+  const container = document.getElementById('badges-container');
+  if (!container) return;
+  const unlocked = getUnlockedBadges();
+
+  container.innerHTML = BADGES.map(b => {
+    const isUnlocked = unlocked.includes(b.id);
+    return `
+      <div style="background:${isUnlocked ? 'var(--primary-light)' : 'var(--surface-hover)'};border:1px solid ${isUnlocked ? 'var(--primary)' : 'var(--border)'};border-radius:var(--radius-md);padding:12px;text-align:center;opacity:${isUnlocked ? '1' : '0.45'};transition:var(--spring);">
+        <div style="font-size:2rem;margin-bottom:4px;">${b.icon}</div>
+        <div style="font-size:0.82rem;font-weight:800;color:var(--text-main);">${b.title}</div>
+        <div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px;">${b.desc}</div>
+        <span style="font-size:0.65rem;font-weight:700;color:${isUnlocked ? 'var(--primary)' : 'var(--text-muted)'};margin-top:4px;display:block;">${isUnlocked ? '✅ مُكتسب' : '🔒 قيد الفتح'}</span>
+      </div>`;
+  }).join('');
+}
+
+// =============================================
+//  AI Task Assistant Subtask Generator
+// =============================================
+function generateAISubtasks() {
+  const titleInput = document.getElementById('task-title-input');
+  if (!titleInput || !titleInput.value.trim()) {
+    showToast('⚠️ اكتب عنوان المهمة أولاً لتوليد التقسيم الذكي', 'error');
+    titleInput?.focus();
+    return;
+  }
+
+  const title = titleInput.value.trim().toLowerCase();
+  let suggestions = [];
+
+  if (title.includes('دراسة') || title.includes('مذاكرة') || title.includes('قراءة') || title.includes('كتاب')) {
+    suggestions = ['تحديد الفصول المطلوبة', 'قراءة ملخص الدرس', 'حل التمارين والأسئلة', 'مراجعة النقاط الصعبة'];
+  } else if (title.includes('تمرين') || title.includes('رياضة') || title.includes('نادي') || title.includes('جيم')) {
+    suggestions = ['الإحماء لـ 5 دقائق', 'تمارين الإطالة والصدر', 'تمارين الكارديو', 'شرب الماء والراحة'];
+  } else if (title.includes('مشروع') || title.includes('برمجة') || title.includes('عمل') || title.includes('تقرير')) {
+    suggestions = ['تحديد المتطلبات والأهداف', 'إعداد المسودة الأولى', 'مراجعة وتعديل الأخطاء', 'تسليم النسخة النهائية'];
+  } else if (title.includes('تسوق') || title.includes('شراء') || title.includes('سوبر')) {
+    suggestions = ['كتابة قائمة الاحتياجات', 'مقارنة الأسعار', 'شراء الأغراض الأساسية'];
+  } else {
+    suggestions = [`التحضير لـ ${title}`, `تنفيذ الخطوة الأولى`, `المراجعة النهائية والتأكد`];
+  }
+
+  const list = document.getElementById('subtasks-input-list');
+  if (list) {
+    list.innerHTML = suggestions.map(text => `
+      <div class="subtask-input-item">
+        <input type="text" class="form-control subtask-input" value="${escapeHtml(text)}" placeholder="مهمة فرعية..." />
+        <button type="button" class="action-icon-btn delete" onclick="this.parentElement.remove()" aria-label="حذف">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>`).join('');
+    showToast('🤖 تم توليد التقسيم الذكي للمهمة!', 'success');
+  }
+}
+
+// =============================================
+//  Synthesized Ambient Audio Generator
+// =============================================
+let activeAudioCtx = null;
+let ambientSourceNode = null;
+let currentAmbientType = 'none';
+
+function startAmbientSound(type) {
+  stopAmbientSound();
+  currentAmbientType = type;
+  if (type === 'none') return;
+
+  try {
+    activeAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const bufferSize = activeAudioCtx.sampleRate * 2;
+    const noiseBuffer = activeAudioCtx.createBuffer(1, bufferSize, activeAudioCtx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+
+    const whiteNoise = activeAudioCtx.createBufferSource();
+    whiteNoise.buffer = noiseBuffer;
+    whiteNoise.loop = true;
+
+    const filter = activeAudioCtx.createBiquadFilter();
+    const gainNode = activeAudioCtx.createGain();
+
+    if (type === 'rain') {
+      filter.type = 'lowpass';
+      filter.frequency.value = 1000;
+      gainNode.gain.value = 0.15;
+    } else if (type === 'forest') {
+      filter.type = 'bandpass';
+      filter.frequency.value = 800;
+      gainNode.gain.value = 0.1;
+    } else if (type === 'ocean') {
+      filter.type = 'lowpass';
+      filter.frequency.value = 400;
+      gainNode.gain.value = 0.2;
+    } else {
+      filter.type = 'lowpass';
+      filter.frequency.value = 600;
+      gainNode.gain.value = 0.12;
+    }
+
+    whiteNoise.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(activeAudioCtx.destination);
+    whiteNoise.start();
+    ambientSourceNode = whiteNoise;
+  } catch (e) { console.warn('Ambient sound synthesis error:', e); }
+}
+
+function stopAmbientSound() {
+  if (ambientSourceNode) {
+    try { ambientSourceNode.stop(); } catch(e){}
+    ambientSourceNode = null;
+  }
+  if (activeAudioCtx) {
+    try { activeAudioCtx.close(); } catch(e){}
+    activeAudioCtx = null;
+  }
+  currentAmbientType = 'none';
+}
+
+// =============================================
+//  Share Achievement Card Generator
+// =============================================
+function generateShareCard() {
+  const canvas = document.getElementById('share-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  const width = canvas.width;
+  const height = canvas.height;
+
+  const grad = ctx.createLinearGradient(0, 0, width, height);
+  grad.addColorStop(0, '#0d9488');
+  grad.addColorStop(1, '#090e1a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(16, 16, width - 32, height - 32);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '800 22px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('📋 TaskFlow – إنجازي اليومي', width / 2, 60);
+
+  const streak = getStreakData().days;
+  ctx.font = '900 48px Inter, sans-serif';
+  ctx.fillStyle = '#fb923c';
+  ctx.fillText(`${streak} 🔥`, width / 2, 140);
+  ctx.font = '600 14px Inter, sans-serif';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText('أيام سلسلة الإنجاز', width / 2, 170);
+
+  const total = tasks.length;
+  const done = tasks.filter(t => t.completed).length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  ctx.fillStyle = '#2dd4bf';
+  ctx.font = '800 36px Inter, sans-serif';
+  ctx.fillText(`${pct}%`, width / 2, 230);
+  ctx.font = '600 14px Inter, sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(`أُنجزت ${done} من أصل ${total} مهمة`, width / 2, 260);
+
+  const dateStr = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  ctx.font = '500 12px Inter, sans-serif';
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillText(dateStr, width / 2, 350);
+
+  const modal = document.getElementById('share-card-modal');
+  if (modal) modal.classList.add('open');
+}
+
+function downloadShareCard() {
+  const canvas = document.getElementById('share-canvas');
+  if (!canvas) return;
+  const link = document.createElement('a');
+  link.download = `TaskFlow_Achievement_${new Date().toISOString().slice(0, 10)}.png`;
+  link.href = canvas.toDataURL();
+  link.click();
+  showToast('📥 تم تنزيل بطاقة الإنجاز!', 'success');
+}
+
+window.selectCalendarDate = selectCalendarDate;
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('cal-prev-month')?.addEventListener('click', () => {
+    currentCalDate.setMonth(currentCalDate.getMonth() - 1);
+    renderCalendar();
+  });
+
+  document.getElementById('cal-next-month')?.addEventListener('click', () => {
+    currentCalDate.setMonth(currentCalDate.getMonth() + 1);
+    renderCalendar();
+  });
+
+  document.getElementById('ai-subtask-btn')?.addEventListener('click', generateAISubtasks);
+
+  document.getElementById('open-focus-modal-btn')?.addEventListener('click', () => {
+    document.getElementById('focus-fullscreen-modal')?.classList.add('open');
+    updatePomoUI();
+  });
+
+  document.getElementById('close-focus-modal-btn')?.addEventListener('click', () => {
+    document.getElementById('focus-fullscreen-modal')?.classList.remove('open');
+    stopAmbientSound();
+  });
+
+  document.getElementById('focus-modal-toggle-btn')?.addEventListener('click', togglePomoTimer);
+  document.getElementById('focus-modal-reset-btn')?.addEventListener('click', resetPomoTimer);
+
+  document.querySelectorAll('.ambient-sound-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.ambient-sound-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      startAmbientSound(btn.dataset.sound);
+    });
+  });
+
+  document.getElementById('share-stats-btn')?.addEventListener('click', generateShareCard);
+  document.getElementById('share-modal-close-btn')?.addEventListener('click', () => {
+    document.getElementById('share-card-modal')?.classList.remove('open');
+  });
+  document.getElementById('download-share-card-btn')?.addEventListener('click', downloadShareCard);
+});
