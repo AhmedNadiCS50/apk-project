@@ -8,7 +8,7 @@ const COLOR_THEME_KEY = 'taskflow_color_theme';
 const LAYOUT_MODE_KEY = 'taskflow_layout_mode';
 const STREAK_KEY = 'taskflow_streak';
 const ALARM_KEY = 'taskflow_alarm_enabled';
-const STICKY_KEY = 'taskflow_sticky_enabled';
+const STICKY_NOTIF_KEY = 'taskflow_sticky_enabled';
 const MEMOS_KEY = 'taskflow_voice_memos';
 
 // Global State
@@ -67,7 +67,10 @@ function saveData() {
     }
   }
   updateDatabaseInfoUI();
-  updateStickyNotification();
+  // updateStickyNotification is async and defined later — called via debounce below
+  if (typeof updateStickyNotification === 'function') {
+    updateStickyNotification();
+  }
 }
 
 function loadData() {
@@ -107,7 +110,7 @@ function updateDatabaseInfoUI() {
 // =============================================
 function initAlarmSystem() {
   alarmEnabled = localStorage.getItem(ALARM_KEY) === 'true';
-  stickyEnabled = localStorage.getItem(STICKY_KEY) === 'true';
+  stickyEnabled = localStorage.getItem(STICKY_NOTIF_KEY) === 'true';
   updateAlarmBtnUI();
   updateStickyBtnUI();
   setInterval(checkDueAlarmsAndTimers, 1000);
@@ -139,7 +142,7 @@ function toggleStickyPermission() {
 
   if (Notification.permission === 'granted') {
     stickyEnabled = !stickyEnabled;
-    localStorage.setItem(STICKY_KEY, stickyEnabled);
+    localStorage.setItem(STICKY_NOTIF_KEY, stickyEnabled);
     updateStickyBtnUI();
     if (stickyEnabled) {
       updateStickyNotification();
@@ -152,7 +155,7 @@ function toggleStickyPermission() {
     Notification.requestPermission().then(permission => {
       if (permission === 'granted') {
         stickyEnabled = true;
-        localStorage.setItem(STICKY_KEY, 'true');
+        localStorage.setItem(STICKY_NOTIF_KEY, 'true');
         updateStickyBtnUI();
         updateStickyNotification();
         showToast('📌 تم السماح وتثبيت إشعار الملخص!', 'success');
@@ -163,31 +166,54 @@ function toggleStickyPermission() {
   }
 }
 
+// Helper: emoji progress bar
+function buildProgressBar(done, total) {
+  if (total === 0) return '⬜⬜⬜⬜⬜';
+  const filled = Math.round((done / total) * 5);
+  return '🟩'.repeat(filled) + '⬜'.repeat(5 - filled);
+}
+
 function updateStickyNotification() {
   if (!stickyEnabled || !('Notification' in window) || Notification.permission !== 'granted') {
     clearStickyNotification();
     return;
   }
 
-  const pendingCount = tasks.filter(t => !t.completed).length;
-  const completedCount = tasks.filter(t => t.completed).length;
+  const total = tasks.length;
+  const done = tasks.filter(t => t.completed).length;
+  const pending = total - done;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const progressBar = buildProgressBar(done, total);
 
-  const title = '📋 TaskFlow – ملخص مهام اليوم';
-  const body = `⏳ متبقية: ${pendingCount} مهمة  |  ✅ منجزة: ${completedCount} مهمة`;
+  const bodyLines = [
+    `${progressBar}  ${pct}%`,
+    `✅ منجزة: ${done}   ⏳ متبقية: ${pending}`,
+  ];
+
+  const nextTask = tasks.find(t => !t.completed);
+  if (nextTask) {
+    const preview = nextTask.title.length > 28 ? nextTask.title.slice(0, 28) + '…' : nextTask.title;
+    bodyLines.push(`▶ التالية: ${preview}`);
+  }
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(reg => {
-      reg.showNotification(title, {
-        body: body,
+      reg.showNotification('📋 TaskFlow – مهامي اليوم', {
+        body: bodyLines.join('\n'),
         icon: 'icons/icon-192.png',
         badge: 'icons/icon-192.png',
+        image: 'icons/notification-banner.png',
         tag: 'taskflow-sticky-summary',
         renotify: false,
         requireInteraction: true,
         silent: true,
         dir: 'rtl',
         lang: 'ar',
-        data: { url: './' }
+        data: { url: './', sticky: true },
+        actions: [
+          { action: 'open', title: '🚀 فتح التطبيق' },
+          { action: 'dismiss', title: '✖ إخفاء' }
+        ]
       });
     }).catch(err => console.warn('Sticky notification error:', err));
   }
@@ -199,7 +225,7 @@ function clearStickyNotification() {
       reg.getNotifications({ tag: 'taskflow-sticky-summary' }).then(notifications => {
         notifications.forEach(n => n.close());
       });
-    }).catch(err => {});
+    }).catch(() => {});
   }
 }
 
@@ -1401,136 +1427,6 @@ function deleteMemo(idx) {
   memos.splice(idx, 1);
   saveMemos(memos);
   renderMemos();
-}
-
-// =============================================
-//  Sticky Pinned Notification System
-// =============================================
-
-const STICKY_NOTIF_KEY = 'taskflow_sticky_enabled';
-const STICKY_TAG = 'taskflow-sticky-summary';
-
-// Get a rich colored emoji bar for progress visualization
-function buildProgressBar(done, total) {
-  if (total === 0) return '⬜⬜⬜⬜⬜';
-  const filled = Math.round((done / total) * 5);
-  return '🟩'.repeat(filled) + '⬜'.repeat(5 - filled);
-}
-
-async function updateStickyNotification() {
-  if (!('serviceWorker' in navigator)) return;
-  const enabled = localStorage.getItem(STICKY_NOTIF_KEY) === 'true';
-  if (!enabled) return;
-
-  if (Notification.permission !== 'granted') return;
-
-  const reg = await navigator.serviceWorker.ready;
-
-  const total = tasks.length;
-  const done  = tasks.filter(t => t.completed).length;
-  const pending = total - done;
-  const progressBar = buildProgressBar(done, total);
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-
-  // Build rich, colorful body text
-  const bodyLines = [
-    `${progressBar}  ${pct}%`,
-    `✅ منجزة: ${done}   ⏳ متبقية: ${pending}`,
-  ];
-
-  // Upcoming tasks hint
-  const nextTask = tasks.find(t => !t.completed);
-  if (nextTask) {
-    const preview = nextTask.title.length > 28 ? nextTask.title.slice(0, 28) + '…' : nextTask.title;
-    bodyLines.push(`▶ التالية: ${preview}`);
-  }
-
-  const options = {
-    body: bodyLines.join('\n'),
-    icon: './icons/icon-192.png',
-    badge: './icons/icon-192.png',
-    image: './icons/notification-banner.png',   // 🎨 Rich banner image
-    vibrate: [],
-    silent: true,
-    dir: 'rtl',
-    lang: 'ar',
-    tag: STICKY_TAG,
-    renotify: false,
-    requireInteraction: true,                   // 📌 Stays in tray
-    data: { sticky: true, url: './' },
-    actions: [
-      { action: 'open',  title: '🚀 فتح التطبيق' },
-      { action: 'dismiss', title: '✖ إخفاء' }
-    ]
-  };
-
-  try {
-    await reg.showNotification('📋 TaskFlow – مهامي اليوم', options);
-  } catch (e) {
-    console.warn('Sticky notification error:', e);
-  }
-}
-
-async function clearStickyNotification() {
-  if (!('serviceWorker' in navigator)) return;
-  try {
-    const reg = await navigator.serviceWorker.ready;
-    const notifs = await reg.getNotifications({ tag: STICKY_TAG });
-    notifs.forEach(n => n.close());
-  } catch (e) {}
-}
-
-async function toggleStickyPermission() {
-  const btn = document.getElementById('sticky-permission-btn');
-  const enabled = localStorage.getItem(STICKY_NOTIF_KEY) === 'true';
-
-  if (enabled) {
-    // Disable
-    localStorage.setItem(STICKY_NOTIF_KEY, 'false');
-    await clearStickyNotification();
-    if (btn) {
-      btn.textContent = 'تفعيل 📌';
-      btn.classList.remove('btn-danger');
-      btn.classList.add('btn-primary');
-    }
-    showToast('🔕 تم إيقاف الإشعار المثبت', 'info');
-  } else {
-    // Enable — request permission if needed
-    let perm = Notification.permission;
-    if (perm === 'default') {
-      perm = await Notification.requestPermission();
-    }
-    if (perm !== 'granted') {
-      showToast('⚠️ يجب منح إذن الإشعارات من إعدادات الهاتف', 'error');
-      return;
-    }
-    localStorage.setItem(STICKY_NOTIF_KEY, 'true');
-    await updateStickyNotification();
-    if (btn) {
-      btn.textContent = 'إيقاف 🔕';
-      btn.classList.remove('btn-primary');
-      btn.classList.add('btn-danger');
-    }
-    showToast('📌 تم تثبيت الإشعار في مركز إشعارات جهازك!', 'success');
-  }
-}
-
-// Auto-restore sticky notification state on app load
-async function initStickyNotification() {
-  const enabled = localStorage.getItem(STICKY_NOTIF_KEY) === 'true';
-  const btn = document.getElementById('sticky-permission-btn');
-  if (btn) {
-    if (enabled && Notification.permission === 'granted') {
-      btn.textContent = 'إيقاف 🔕';
-      btn.classList.remove('btn-primary');
-      btn.classList.add('btn-danger');
-      updateStickyNotification(); // refresh count on load
-    } else {
-      btn.textContent = 'تفعيل 📌';
-      btn.classList.remove('btn-danger');
-      btn.classList.add('btn-primary');
-    }
-  }
 }
 
 // Bind global functions to window explicitly for inline onclick handlers
