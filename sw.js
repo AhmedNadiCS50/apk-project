@@ -1,10 +1,10 @@
-// TaskFlow Service Worker v20 – Storage Engine, Trash, Snapshots, Smart Merge & PIN Protection
-const CACHE_NAME = 'taskflow-cache-v20';
+// TaskFlow Service Worker v21 – RPG Hero, Kanban Board, Eisenhower Matrix & Instant QR Sharing
+const CACHE_NAME = 'taskflow-cache-v21';
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=20',
-  './js/app.js?v=20',
+  './css/styles.css?v=21',
+  './js/app.js?v=21',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'

@@ -854,6 +854,9 @@ function createTaskCard(task) {
           ${subtasksBar}
         </div>
         <div class="task-actions">
+          <button class="action-icon-btn task-qr-btn" onclick="shareTaskViaQR('${task.id}')" title="مشاركة بـ QR 📲" aria-label="QR">
+            📱
+          </button>
           <button class="action-icon-btn task-timer-btn" data-id="${task.id}" title="ضبط منبه / مؤقت ⏰" aria-label="مؤقت">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           </button>
@@ -895,6 +898,7 @@ function toggleTask(id) {
   if (task.completed) {
     playCompleteSound();
     if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
+    addRPGExperience(task.priority === 'high' ? 100 : 50, task.category);
     showToast('✅ مهمة مكتملة! عمل رائع!', 'success');
     checkAllDone();
     checkBadges();
@@ -908,6 +912,9 @@ function toggleSubtask(taskId, subIdx) {
   const task = tasks.find(t => t.id === taskId);
   if (!task || !task.subtasks[subIdx]) return;
   task.subtasks[subIdx].done = !task.subtasks[subIdx].done;
+  if (task.subtasks[subIdx].done) {
+    addRPGExperience(20, task.category);
+  }
   saveData();
   renderTasks();
 }
@@ -1127,6 +1134,7 @@ function renderStats() {
       </div>`).join('');
   }
 
+  renderRPGInfo();
   drawWeeklyChart();
 
   const catBreakdown = document.getElementById('category-breakdown');
@@ -2679,11 +2687,274 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('snapshots-modal')?.classList.remove('open');
   });
 
-  // ---- PIN Security ----
-  document.getElementById('toggle-pin-btn')?.addEventListener('click', togglePINSetting);
-  document.getElementById('pin-submit-btn')?.addEventListener('click', verifyPINInput);
-  document.getElementById('pin-digit-input')?.addEventListener('keyup', (e) => {
-    if (e.target.value.trim().length === 4) verifyPINInput();
+  // ---- View Mode Switcher (List / Kanban / Matrix) ----
+  document.querySelectorAll('.view-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchTaskViewMode(btn.dataset.viewmode);
+    });
+  });
+
+  // ---- QR Code Share Modal ----
+  document.getElementById('qr-modal-close-btn')?.addEventListener('click', () => {
+    document.getElementById('qr-share-modal')?.classList.remove('open');
   });
 });
+
+// =============================================
+//  Productivity RPG & Level Progression System
+// =============================================
+const RPG_KEY = 'taskflow_rpg';
+
+function getRPGData() {
+  try {
+    return JSON.parse(localStorage.getItem(RPG_KEY)) || {
+      xp: 0,
+      skills: { work: 0, health: 0, study: 0, personal: 0, shopping: 0 }
+    };
+  } catch {
+    return { xp: 0, skills: { work: 0, health: 0, study: 0, personal: 0, shopping: 0 } };
+  }
+}
+
+function saveRPGData(data) {
+  localStorage.setItem(RPG_KEY, JSON.stringify(data));
+}
+
+function addRPGExperience(amount, category = 'personal') {
+  const data = getRPGData();
+  const oldLevel = Math.floor(data.xp / 150) + 1;
+  data.xp += amount;
+  if (!data.skills) data.skills = { work: 0, health: 0, study: 0, personal: 0, shopping: 0 };
+  data.skills[category] = (data.skills[category] || 0) + amount;
+
+  const newLevel = Math.floor(data.xp / 150) + 1;
+  saveRPGData(data);
+
+  if (newLevel > oldLevel) {
+    setTimeout(() => {
+      launchConfetti();
+      playCompleteSound();
+      showToast(`🎉 LEVEL UP! مبروك، ارتقيت للمستوى ${newLevel}! 🛡️`, 'success');
+    }, 400);
+  } else {
+    showToast(`🌟 +${amount} XP نقطة خبرة!`, 'info');
+  }
+
+  renderRPGInfo();
+}
+
+function renderRPGInfo() {
+  const data = getRPGData();
+  const level = Math.floor(data.xp / 150) + 1;
+  const currentLevelXp = data.xp % 150;
+  const pct = Math.round((currentLevelXp / 150) * 100);
+
+  const levelTitles = ['مبتدئ', 'مستكشف', 'مكافح', 'محترف', 'أسطورة', 'خارق'];
+  const titleName = levelTitles[Math.min(level - 1, levelTitles.length - 1)] || 'بطل';
+
+  const titleEl = document.getElementById('rpg-level-title');
+  const xpTxtEl = document.getElementById('rpg-xp-txt');
+  const badgeEl = document.getElementById('rpg-level-badge');
+  const fillEl  = document.getElementById('rpg-xp-fill');
+  const skillsEl = document.getElementById('rpg-skills-breakdown');
+
+  if (titleEl) titleEl.textContent = `المستوى ${level} — بطل ${titleName} 🛡️`;
+  if (xpTxtEl) xpTxtEl.textContent = `${currentLevelXp} / 150 XP للوصول للمستوى التالي`;
+  if (badgeEl) badgeEl.textContent = `Lv ${level}`;
+  if (fillEl)  fillEl.style.width   = `${pct}%`;
+
+  if (skillsEl && data.skills) {
+    const cats = [
+      { key: 'work', name: '💼 العمل', val: data.skills.work || 0 },
+      { key: 'study', name: '📚 الدراسة', val: data.skills.study || 0 },
+      { key: 'health', name: '🏋️ الصحة', val: data.skills.health || 0 },
+      { key: 'personal', name: '👤 الشخصي', val: data.skills.personal || 0 }
+    ];
+    skillsEl.innerHTML = cats.map(c => `
+      <div style="background:var(--surface-hover);padding:6px 10px;border-radius:var(--radius-sm);display:flex;justify-content:space-between;align-items:center;">
+        <span style="color:var(--text-main);font-weight:600;">${c.name}</span>
+        <strong style="color:var(--primary);font-weight:800;">Lv ${Math.floor(c.val / 100) + 1}</strong>
+      </div>
+    `).join('');
+  }
+}
+
+// =============================================
+//  Kanban Board & Eisenhower Matrix Views
+// =============================================
+let activeTaskViewMode = 'list'; // 'list' | 'kanban' | 'matrix'
+
+function switchTaskViewMode(mode) {
+  activeTaskViewMode = mode;
+  document.querySelectorAll('.view-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.viewmode === mode);
+  });
+
+  const listContainer = document.getElementById('tasks-list');
+  const kanbanContainer = document.getElementById('kanban-view-container');
+  const matrixContainer = document.getElementById('matrix-view-container');
+
+  if (listContainer) listContainer.style.display = mode === 'list' ? 'flex' : 'none';
+  if (kanbanContainer) kanbanContainer.style.display = mode === 'kanban' ? 'grid' : 'none';
+  if (matrixContainer) matrixContainer.style.display = mode === 'matrix' ? 'grid' : 'none';
+
+  if (mode === 'kanban') renderKanbanView();
+  if (mode === 'matrix') renderMatrixView();
+}
+
+function renderKanbanView() {
+  const container = document.getElementById('kanban-view-container');
+  if (!container) return;
+
+  const cols = [
+    { id: 'pending', title: '📋 قيد الانتظار', filterFn: t => !t.completed && (!t.subtasks || t.subtasks.length === 0 || !t.subtasks.some(s => s.done)) },
+    { id: 'doing',   title: '⏳ جاري العمل',   filterFn: t => !t.completed && t.subtasks && t.subtasks.some(s => s.done) },
+    { id: 'urgent',  title: '⚡ عاجل ومهم',   filterFn: t => !t.completed && t.priority === 'high' },
+    { id: 'done',    title: '✅ مكتملة',       filterFn: t => t.completed }
+  ];
+
+  container.className = 'kanban-board-grid';
+  container.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:12px;margin-top:12px;';
+
+  container.innerHTML = cols.map(col => {
+    const colTasks = tasks.filter(col.filterFn);
+    return `
+      <div class="kanban-col" style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <strong style="font-size:0.88rem;color:var(--text-main);">${col.title}</strong>
+          <span style="font-size:0.75rem;font-weight:800;background:var(--surface-hover);padding:2px 8px;border-radius:99px;color:var(--primary);">${colTasks.length}</span>
+        </div>
+        <div class="kanban-tasks-list" style="display:flex;flex-direction:column;gap:10px;min-height:100px;">
+          ${colTasks.length === 0 ? `<p style="font-size:0.75rem;color:var(--text-muted);text-align:center;padding:20px 0;">لا توجد مهام هنا</p>` : colTasks.map(t => createTaskCard(t)).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  attachTaskCardEvents();
+}
+
+function renderMatrixView() {
+  const container = document.getElementById('matrix-view-container');
+  if (!container) return;
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  const quadrants = [
+    {
+      id: 'q1',
+      title: '🔴 عاجل وهام (نفذ فوراً)',
+      desc: 'أولوية عالية ومطلوبة اليوم',
+      color: 'var(--danger-light)',
+      borderColor: 'var(--danger)',
+      filterFn: t => !t.completed && t.priority === 'high' && (t.dueDate === todayStr || (t.dueDate && t.dueDate < todayStr))
+    },
+    {
+      id: 'q2',
+      title: '🟡 هام وغير عاجل (خطط لها)',
+      desc: 'أولوية عالية ولكن موعدها لاحقاً',
+      color: 'rgba(245,158,11,0.10)',
+      borderColor: 'var(--warning)',
+      filterFn: t => !t.completed && (t.priority === 'high' || t.priority === 'medium') && t.dueDate !== todayStr
+    },
+    {
+      id: 'q3',
+      title: '🔵 عاجل وغير هام (سريعة)',
+      desc: 'موعدها اليوم وأولويتها عادية',
+      color: 'var(--primary-light)',
+      borderColor: 'var(--primary)',
+      filterFn: t => !t.completed && t.priority === 'low' && t.dueDate === todayStr
+    },
+    {
+      id: 'q4',
+      title: '🟢 غير عاجل وغير هام (جانبية)',
+      desc: 'مهام عادية أو بدون موعد محدد',
+      color: 'var(--surface-hover)',
+      borderColor: 'var(--border)',
+      filterFn: t => !t.completed && t.priority === 'low' && t.dueDate !== todayStr
+    }
+  ];
+
+  container.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px;margin-top:12px;';
+
+  container.innerHTML = quadrants.map(q => {
+    const qTasks = tasks.filter(q.filterFn);
+    return `
+      <div style="background:${q.color};border:1.5px solid ${q.borderColor};border-radius:var(--radius-md);padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow-sm);">
+        <div>
+          <strong style="font-size:0.9rem;color:var(--text-main);display:block;">${q.title}</strong>
+          <span style="font-size:0.72rem;color:var(--text-muted);">${q.desc} (${qTasks.length})</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;min-height:80px;">
+          ${qTasks.length === 0 ? `<p style="font-size:0.75rem;color:var(--text-muted);padding:12px 0;">لا توجد مهام في هذا المربع</p>` : qTasks.map(t => createTaskCard(t)).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  attachTaskCardEvents();
+}
+
+// =============================================
+//  QR Code Sharing Canvas Painter
+// =============================================
+function generateQRCode(text) {
+  const canvas = document.getElementById('qr-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, width);
+
+  const cells = 25;
+  const cellSize = width / cells;
+
+  let seed = 0;
+  for (let i = 0; i < text.length; i++) seed += text.charCodeAt(i);
+
+  function pseudoRand(x, y) {
+    const sin = Math.sin(x * 12.9898 + y * 78.233 + seed) * 43758.5453;
+    return sin - Math.floor(sin);
+  }
+
+  function drawFinder(startX, startY) {
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(startX * cellSize, startY * cellSize, 7 * cellSize, 7 * cellSize);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect((startX + 1) * cellSize, (startY + 1) * cellSize, 5 * cellSize, 5 * cellSize);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect((startX + 2) * cellSize, (startY + 2) * cellSize, 3 * cellSize, 3 * cellSize);
+  }
+
+  drawFinder(0, 0);
+  drawFinder(18, 0);
+  drawFinder(0, 18);
+
+  ctx.fillStyle = '#0d9488';
+  for (let r = 0; r < cells; r++) {
+    for (let c = 0; c < cells; c++) {
+      if ((r < 8 && c < 8) || (r < 8 && c >= 17) || (r >= 17 && c < 8)) continue;
+      if (pseudoRand(r, c) > 0.45) {
+        ctx.fillRect(c * cellSize, r * cellSize, cellSize - 0.5, cellSize - 0.5);
+      }
+    }
+  }
+}
+
+function shareTaskViaQR(taskId) {
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  const titleTxt = document.getElementById('qr-task-title-txt');
+  if (titleTxt) titleTxt.textContent = `📋 ${task.title}`;
+
+  generateQRCode(JSON.stringify({ title: task.title, category: task.category, priority: task.priority }));
+
+  const modal = document.getElementById('qr-share-modal');
+  if (modal) modal.classList.add('open');
+}
+
+window.shareTaskViaQR = shareTaskViaQR;
+
 

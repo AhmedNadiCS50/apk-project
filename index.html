@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Readex+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=20" />
+  <link rel="stylesheet" href="css/styles.css?v=21" />
 </head>
 <body>
 
@@ -188,20 +188,24 @@
         <button class="chip-btn" data-category="shopping" role="tab">🛒 تسوق</button>
       </div>
 
-      <!-- Status Tabs + Layout Toggle -->
+      <!-- Status Tabs + Multi-View Switcher -->
       <div class="status-bar-header">
         <div class="status-tabs">
           <button class="tab-btn active" data-status="all">الكل</button>
           <button class="tab-btn" data-status="pending">قيد التنفيذ</button>
           <button class="tab-btn" data-status="completed">مكتملة</button>
         </div>
-        <button class="view-toggle-btn" id="layout-toggle-btn" title="تبديل العرض" aria-label="طريقة العرض">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-        </button>
+        <div style="display:flex;gap:4px;">
+          <button class="chip-btn view-mode-btn active" data-viewmode="list" title="عرض القائمة 📋" style="margin:0;padding:6px 10px;font-size:0.75rem;">📋</button>
+          <button class="chip-btn view-mode-btn" data-viewmode="kanban" title="لوحة كانبان 📊" style="margin:0;padding:6px 10px;font-size:0.75rem;">📊</button>
+          <button class="chip-btn view-mode-btn" data-viewmode="matrix" title="مصفوفة آيزنهاور ⚡" style="margin:0;padding:6px 10px;font-size:0.75rem;">⚡</button>
+        </div>
       </div>
 
-      <!-- Tasks List -->
+      <!-- Tasks Containers (List / Kanban / Matrix) -->
       <div class="tasks-list" id="tasks-list" aria-label="قائمة المهام"></div>
+      <div id="kanban-view-container" style="display:none;"></div>
+      <div id="matrix-view-container" style="display:none;"></div>
 
     </section>
 
@@ -266,6 +270,25 @@
       <h2 style="font-size:1.15rem;font-weight:800;color:var(--text-main);margin:0;">📊 إحصائيات الأداء والأوسمة</h2>
       <button class="chip-btn" id="share-stats-btn" style="background:var(--primary);color:#fff;margin:0;padding:8px 14px;">📸 مشاركة الإنجاز</button>
     </div>
+    <!-- Productivity RPG Hero Card -->
+    <div id="rpg-hero-card" style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:1.6rem;">🛡️</span>
+          <div>
+            <strong id="rpg-level-title" style="font-size:0.95rem;color:var(--text-main);display:block;">المستوى 1 — بطل مبتدئ</strong>
+            <span id="rpg-xp-txt" style="font-size:0.75rem;color:var(--text-muted);">0 / 100 XP للوصول للمستوى التالي</span>
+          </div>
+        </div>
+        <span id="rpg-level-badge" style="font-size:0.85rem;font-weight:800;background:var(--primary);color:#fff;padding:4px 10px;border-radius:99px;">Lv 1</span>
+      </div>
+      <div style="height:8px;width:100%;background:var(--surface-hover);border-radius:99px;overflow:hidden;margin-bottom:12px;">
+        <div id="rpg-xp-fill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--primary),var(--secondary));border-radius:99px;transition:width 0.6s cubic-bezier(.34,1.56,.64,1);"></div>
+      </div>
+      <!-- Skill Tree breakdown -->
+      <div id="rpg-skills-breakdown" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;font-size:0.75rem;"></div>
+    </div>
+
     <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);">
       <p style="font-size:0.88rem;font-weight:700;margin-bottom:10px;color:var(--text-main);">📈 معدل الإنجاز الأسبوعي</p>
       <canvas id="weekly-chart-canvas" height="150" style="width:100%;display:block;"></canvas>
@@ -652,6 +675,23 @@
   </div>
 </div>
 
-<script src="js/app.js?v=20"></script>
+<!-- INSTANT QR CODE SHARE MODAL -->
+<div class="modal-overlay" id="qr-share-modal" role="dialog" aria-modal="true">
+  <div class="modal-card" style="text-align:center;max-width:340px;">
+    <div class="modal-header">
+      <h2>📲 مشاركة فورية بـ QR Code</h2>
+      <button class="icon-btn" id="qr-modal-close-btn" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:14px;">امسح الرمز بكاميرا الهاتف لمشاركة المهمة فوراً</p>
+    <div style="background:#fff;padding:16px;border-radius:var(--radius-md);display:inline-block;margin-bottom:14px;box-shadow:var(--shadow-sm);">
+      <canvas id="qr-canvas" width="200" height="200" style="width:200px;height:200px;display:block;"></canvas>
+    </div>
+    <p id="qr-task-title-txt" style="font-size:0.9rem;font-weight:700;color:var(--primary);margin-bottom:12px;">عنوان المهمة</p>
+  </div>
+</div>
+
+<script src="js/app.js?v=21"></script>
 </body>
 </html>
