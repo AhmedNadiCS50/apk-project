@@ -1,5 +1,5 @@
 // =============================================
-//  TaskFlow – Main Application Logic
+//  TaskFlow – Main Application Logic & Dual-Engine DB
 // =============================================
 
 const DB_KEY = 'taskflow_data';
@@ -16,12 +16,49 @@ let currentFilter = { category: 'all', status: 'all', search: '' };
 let editingTaskId = null;
 let activeView = 'tasks';
 let isGridMode = false;
+let dbInstance = null;
 
 // =============================================
-//  Data Persistence
+//  IndexedDB + LocalStorage Dual-Engine Storage
 // =============================================
+function initIndexedDB() {
+  return new Promise((resolve) => {
+    if (!('indexedDB' in window)) return resolve(null);
+    const request = indexedDB.open('TaskFlowDB', 1);
+
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('tasks')) {
+        db.createObjectStore('tasks', { keyPath: 'id' });
+      }
+    };
+
+    request.onsuccess = (e) => {
+      dbInstance = e.target.result;
+      resolve(dbInstance);
+    };
+
+    request.onerror = () => resolve(null);
+  });
+}
+
 function saveData() {
+  // 1. LocalStorage Instant Sync
   localStorage.setItem(DB_KEY, JSON.stringify(tasks));
+
+  // 2. IndexedDB Deep Persistent Backup
+  if (dbInstance) {
+    try {
+      const tx = dbInstance.transaction('tasks', 'readwrite');
+      const store = tx.objectStore('tasks');
+      store.clear();
+      tasks.forEach(t => store.put(t));
+    } catch (e) {
+      console.warn('IndexedDB sync warning:', e);
+    }
+  }
+
+  updateDatabaseInfoUI();
 }
 
 function loadData() {
@@ -30,6 +67,30 @@ function loadData() {
     tasks = raw ? JSON.parse(raw) : [];
   } catch (e) {
     tasks = [];
+  }
+
+  // Backup load from IndexedDB if LocalStorage is empty
+  initIndexedDB().then(db => {
+    if (db && tasks.length === 0) {
+      const tx = db.transaction('tasks', 'readonly');
+      const store = tx.objectStore('tasks');
+      const req = store.getAll();
+      req.onsuccess = () => {
+        if (req.result && req.result.length > 0) {
+          tasks = req.result;
+          saveData();
+          renderTasks();
+        }
+      };
+    }
+    updateDatabaseInfoUI();
+  });
+}
+
+function updateDatabaseInfoUI() {
+  const infoEl = document.getElementById('db-task-count-info');
+  if (infoEl) {
+    infoEl.textContent = `عدد المهام المحفوظة: ${tasks.length} مهمة (متزامنة في IndexedDB)`;
   }
 }
 
@@ -550,6 +611,7 @@ function showView(view) {
   } else if (view === 'settings') {
     settingsView.style.display = 'block';
     fab.style.display = 'none';
+    updateDatabaseInfoUI();
   } else {
     mainContent.style.display = 'block';
     fab.style.display = 'flex';
@@ -677,7 +739,7 @@ function applyColorTheme(colorTheme) {
 }
 
 // =============================================
-//  Export & Clear Tasks
+//  Export & Import JSON Backup Data
 // =============================================
 function exportData() {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tasks, null, 2));
@@ -688,6 +750,26 @@ function exportData() {
   dlAnchor.click();
   dlAnchor.remove();
   showToast('📥 تم تصدير بياناتك بنجاح!', 'success');
+}
+
+function importData(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importedTasks = JSON.parse(e.target.result);
+      if (Array.isArray(importedTasks)) {
+        tasks = importedTasks;
+        saveData();
+        renderTasks();
+        showToast('📤 تم استرجاع واستيراد المهام بنجاح!', 'success');
+      } else {
+        showToast('⚠️ ملف النسخة الاحتياطية غير صالح', 'error');
+      }
+    } catch (err) {
+      showToast('⚠️ خطأ في قراءة ملف التنسيق', 'error');
+    }
+  };
+  reader.readAsText(file);
 }
 
 function clearCompletedTasks() {
@@ -763,8 +845,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Export & Clear Completed Data
+  // Export & Import Backup Handlers
   document.getElementById('export-data-btn')?.addEventListener('click', exportData);
+
+  const importBtn = document.getElementById('import-trigger-btn');
+  const importInput = document.getElementById('import-file-input');
+  if (importBtn && importInput) {
+    importBtn.addEventListener('click', () => importInput.click());
+    importInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        importData(e.target.files[0]);
+      }
+    });
+  }
+
   document.getElementById('clear-completed-btn')?.addEventListener('click', clearCompletedTasks);
 
   // Search Toggle
@@ -818,7 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Modal: Detail Close
   document.getElementById('detail-close-btn').addEventListener('click', closeDetailModal);
   document.getElementById('detail-modal').addEventListener('click', (e) => {
-    if (e.target === document.target) closeDetailModal();
+    if (e.target === document.getElementById('detail-modal')) closeDetailModal();
   });
 
   // Add Subtask Input
@@ -848,7 +942,7 @@ document.addEventListener('DOMContentLoaded', () => {
       title,
       description: document.getElementById('task-desc-input').value,
       category: document.getElementById('task-category-input').value,
-      priority: document.querySelector('input[name="priority"][value="${task.priority}"]')?.value || 'medium',
+      priority: document.querySelector('input[name="priority"]:checked')?.value || 'medium',
       dueDate: document.getElementById('task-date-input').value,
       subtasks: Array.from(document.querySelectorAll('.subtask-input')).map(i => ({ text: i.value })),
     };

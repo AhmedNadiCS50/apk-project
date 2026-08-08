@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="css/styles.css?v=4" />
+  <link rel="stylesheet" href="css/styles.css?v=5" />
 </head>
 <body>
 
@@ -22,6 +22,9 @@
 
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>
+
+<!-- Hidden File Input for Importing Data -->
+<input type="file" id="import-file-input" accept=".json" style="display:none;" />
 
 <!-- ========== APP CONTAINER ========== -->
 <div class="app-container">
@@ -147,8 +150,18 @@
 
   <!-- SETTINGS VIEW (hidden panel) -->
   <div id="settings-view" style="display:none;padding:18px 20px;">
-    <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:18px;color:var(--text-main);">⚙️ الإعدادات والثيمات</h2>
+    <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:18px;color:var(--text-main);">⚙️ الإعدادات وحالة التخزين</h2>
     
+    <!-- Database Health & Status Card -->
+    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
+      <p style="font-size:0.9rem;font-weight:700;margin-bottom:4px;color:var(--text-main);">🗄️ حالة قاعدة البيانات والتخزين المحفوظ</p>
+      <p style="font-size:0.8rem;color:var(--primary);font-weight:600;margin-bottom:10px;">⚡ محرك مزدوج: IndexedDB + LocalStorage مفعّل</p>
+      <div style="font-size:0.78rem;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
+        <span>🔒 بياناتك محفوظة بأمان على هاتفك ولا تضيع عند إغلاق التطبيق.</span>
+        <span id="db-task-count-info">عدد المهام المحفوظة: 0 مهمة</span>
+      </div>
+    </div>
+
     <!-- Theme Palette Selector -->
     <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
       <p style="font-size:0.9rem;font-weight:700;margin-bottom:4px;color:var(--text-main);">🎨 ثيم الألوان المفضّل</p>
@@ -171,13 +184,14 @@
       <button class="chip-btn" id="settings-theme-btn" style="margin:0;">تبديل 🌗</button>
     </div>
 
-    <!-- Data Management -->
+    <!-- Data Management & Backup Import/Export -->
     <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);">
-      <p style="font-size:0.9rem;font-weight:700;margin-bottom:12px;color:var(--text-main);">💾 النسخ الاحتياطي والبيانات</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <p style="font-size:0.9rem;font-weight:700;margin-bottom:12px;color:var(--text-main);">💾 النسخ الاحتياطي واسترجاع البيانات</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <button id="export-data-btn" class="chip-btn" style="justify-content:center;padding:12px;">📥 تصدير (JSON)</button>
-        <button id="clear-completed-btn" class="chip-btn" style="justify-content:center;padding:12px;color:var(--danger);border-color:var(--danger-light);">🧹 مسح المكتملة</button>
+        <button id="import-trigger-btn" class="chip-btn" style="justify-content:center;padding:12px;">📤 استيراد (JSON)</button>
       </div>
+      <button id="clear-completed-btn" class="chip-btn" style="width:100%;justify-content:center;padding:12px;color:var(--danger);border-color:var(--danger-light);">🧹 مسح المهام المكتملة</button>
     </div>
   </div>
 
@@ -303,6 +317,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=4"></script>
+<script src="js/app.js?v=5"></script>
 </body>
 </html>
