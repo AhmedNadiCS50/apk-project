@@ -1,10 +1,10 @@
-// TaskFlow Service Worker v19 – 60FPS Hardware Acceleration & Ultra-Smooth Performance
-const CACHE_NAME = 'taskflow-cache-v19';
+// TaskFlow Service Worker v20 – Storage Engine, Trash, Snapshots, Smart Merge & PIN Protection
+const CACHE_NAME = 'taskflow-cache-v20';
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=19',
-  './js/app.js?v=19',
+  './css/styles.css?v=20',
+  './js/app.js?v=20',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'

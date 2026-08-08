@@ -12,6 +12,9 @@ const STICKY_NOTIF_KEY = 'taskflow_sticky_enabled';
 const MEMOS_KEY = 'taskflow_voice_memos';
 const SOUND_KEY = 'taskflow_sound_enabled';
 const AUTO_THEME_KEY = 'taskflow_auto_theme';
+const TRASH_KEY = 'taskflow_trash';
+const SNAPSHOTS_KEY = 'taskflow_snapshots';
+const PIN_KEY = 'taskflow_pin';
 
 // Global State
 let tasks = [];
@@ -40,12 +43,15 @@ let alarmAudioLoopInterval = null;
 function initIndexedDB() {
   return new Promise((resolve) => {
     if (!('indexedDB' in window)) return resolve(null);
-    const request = indexedDB.open('TaskFlowDB', 1);
+    const request = indexedDB.open('TaskFlowDB', 2);
 
     request.onupgradeneeded = (e) => {
       const db = e.target.result;
       if (!db.objectStoreNames.contains('tasks')) {
         db.createObjectStore('tasks', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('trash')) {
+        db.createObjectStore('trash', { keyPath: 'id' });
       }
     };
 
@@ -71,7 +77,7 @@ function saveData() {
     }
   }
   updateDatabaseInfoUI();
-  // updateStickyNotification is async and defined later — called via debounce below
+  updateStorageQuotaUI();
   if (typeof updateStickyNotification === 'function') {
     updateStickyNotification();
   }
@@ -99,6 +105,9 @@ function loadData() {
       };
     }
     updateDatabaseInfoUI();
+    updateStorageQuotaUI();
+    purgeOldTrash();
+    checkPINProtection();
   });
 }
 
@@ -107,6 +116,39 @@ function updateDatabaseInfoUI() {
   if (infoEl) {
     infoEl.textContent = `عدد المهام المحفوظة: ${tasks.length} مهمة (متزامنة في IndexedDB)`;
   }
+}
+
+function updateStorageQuotaUI() {
+  const textEl = document.getElementById('storage-quota-text');
+  const fillEl = document.getElementById('storage-quota-fill');
+  if (!textEl || !fillEl) return;
+
+  if (navigator.storage && navigator.storage.estimate) {
+    navigator.storage.estimate().then(estimate => {
+      const usageMB = (estimate.usage / (1024 * 1024)).toFixed(2);
+      const quotaGB = (estimate.quota / (1024 * 1024 * 1024)).toFixed(1);
+      const pct = Math.min(100, ((estimate.usage / estimate.quota) * 100).toFixed(2));
+      textEl.textContent = `${usageMB} ميجابايت مستخدمة من ${quotaGB} جيجابايت (${pct}%)`;
+      fillEl.style.width = `${Math.max(2, pct)}%`;
+    }).catch(() => {
+      calculateFallbackQuota(textEl, fillEl);
+    });
+  } else {
+    calculateFallbackQuota(textEl, fillEl);
+  }
+}
+
+function calculateFallbackQuota(textEl, fillEl) {
+  let totalChars = 0;
+  for (let key in localStorage) {
+    if (localStorage.hasOwnProperty(key)) {
+      totalChars += (localStorage[key].length + key.length) * 2;
+    }
+  }
+  const kb = (totalChars / 1024).toFixed(1);
+  const pct = Math.min(100, ((totalChars / (5 * 1024 * 1024)) * 100).toFixed(1));
+  textEl.textContent = `${kb} كيلوبايت مستخدمة من 5 ميجابايت (${pct}%)`;
+  fillEl.style.width = `${Math.max(2, pct)}%`;
 }
 
 // =============================================
@@ -931,11 +973,21 @@ function updateTask(id, data) {
 }
 
 function deleteTask(id) {
-  if (!confirm('هل أنت متأكد من حذف هذه المهمة؟')) return;
+  const target = tasks.find(t => t.id === id);
+  if (!target) return;
+  if (!confirm(`هل أنت متأكد من نقل المهمة "${target.title}" إلى سلة المهملات؟`)) return;
+
+  createSnapshot('حذف مهمة');
+
+  const trashItem = { ...target, deletedAt: Date.now() };
+  const trash = getTrash();
+  trash.unshift(trashItem);
+  saveTrash(trash);
+
   tasks = tasks.filter(t => t.id !== id);
   saveData();
   renderTasks();
-  showToast('🗑️ تم حذف المهمة', 'info');
+  showToast('🗑️ تم نقل المهمة إلى سلة المهملات', 'info');
 }
 
 function openAddModal() {
@@ -1369,16 +1421,182 @@ function exportData() {
   showToast('📥 تم تصدير بياناتك بنجاح!', 'success');
 }
 
+// =============================================
+//  Trash, Snapshots, Smart Merge & PIN Security
+// =============================================
+
+function getTrash() {
+  try { return JSON.parse(localStorage.getItem(TRASH_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveTrash(trashList) {
+  localStorage.setItem(TRASH_KEY, JSON.stringify(trashList));
+  if (dbInstance) {
+    try {
+      const tx = dbInstance.transaction('trash', 'readwrite');
+      const store = tx.objectStore('trash');
+      store.clear();
+      trashList.forEach(t => store.put(t));
+    } catch (e) {
+      console.warn('Trash DB sync error:', e);
+    }
+  }
+}
+
+function purgeOldTrash() {
+  const trash = getTrash();
+  const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+  const filtered = trash.filter(item => (item.deletedAt || 0) > thirtyDaysAgo);
+  if (filtered.length !== trash.length) {
+    saveTrash(filtered);
+  }
+}
+
+function restoreTaskFromTrash(id) {
+  let trash = getTrash();
+  const targetIndex = trash.findIndex(t => t.id === id);
+  if (targetIndex === -1) return;
+
+  const restored = trash.splice(targetIndex, 1)[0];
+  delete restored.deletedAt;
+  tasks.unshift(restored);
+
+  saveTrash(trash);
+  saveData();
+  renderTasks();
+  renderTrashUI();
+  showToast('↩️ تم استعادة المهمة بنجاح!', 'success');
+}
+
+function permanentlyDeleteTrashTask(id) {
+  if (!confirm('حذف هذه المهمة نهائياً من السلة؟')) return;
+  let trash = getTrash();
+  trash = trash.filter(t => t.id !== id);
+  saveTrash(trash);
+  renderTrashUI();
+  showToast('❌ تم الحذف النهائي', 'info');
+}
+
+function emptyTrash() {
+  const trash = getTrash();
+  if (trash.length === 0) {
+    showToast('سلة المهملات فارغة بالفعل', 'info');
+    return;
+  }
+  if (!confirm('هل أنت متأكد من تفريغ سلة المهملات تماماً؟')) return;
+  saveTrash([]);
+  renderTrashUI();
+  showToast('🧹 تم تفريغ سلة المهملات بالكامل', 'info');
+}
+
+function renderTrashUI() {
+  const container = document.getElementById('trash-items-list');
+  if (!container) return;
+  const trash = getTrash();
+
+  if (trash.length === 0) {
+    container.innerHTML = `<div class="empty-state" style="padding:20px;"><p>سلة المهملات فارغة 🗑️</p></div>`;
+    return;
+  }
+
+  container.innerHTML = trash.map(t => {
+    const deletedDate = new Date(t.deletedAt || Date.now()).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+    return `
+      <div style="background:var(--surface-hover);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <strong style="font-size:0.88rem;color:var(--text-main);display:block;">${t.title}</strong>
+          <span style="font-size:0.72rem;color:var(--text-muted);">حُذفت: ${deletedDate}</span>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="chip-btn" onclick="restoreTaskFromTrash('${t.id}')" style="margin:0;padding:5px 10px;font-size:0.75rem;background:var(--primary);color:#fff;border:none;">استعادة ↩️</button>
+          <button class="chip-btn" onclick="permanentlyDeleteTrashTask('${t.id}')" style="margin:0;padding:5px 8px;font-size:0.75rem;color:var(--danger);border-color:var(--danger-light);">حذف ❌</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Snapshots System
+function getSnapshots() {
+  try { return JSON.parse(localStorage.getItem(SNAPSHOTS_KEY)) || []; }
+  catch { return []; }
+}
+
+function createSnapshot(reason = 'تحديث عادي') {
+  const snapshots = getSnapshots();
+  const newSnapshot = {
+    id: 'snap_' + Date.now(),
+    timestamp: Date.now(),
+    reason,
+    count: tasks.length,
+    tasksData: JSON.parse(JSON.stringify(tasks))
+  };
+  snapshots.unshift(newSnapshot);
+  if (snapshots.length > 5) snapshots.pop();
+  localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(snapshots));
+}
+
+function restoreSnapshot(snapId) {
+  const snapshots = getSnapshots();
+  const snap = snapshots.find(s => s.id === snapId);
+  if (!snap) return;
+
+  if (!confirm(`استعادة اللقطة (${snap.reason}) التي تحتوي على ${snap.count} مهمة؟`)) return;
+
+  createSnapshot('قبل استعادة اللقطة');
+  tasks = JSON.parse(JSON.stringify(snap.tasksData));
+  saveData();
+  renderTasks();
+  document.getElementById('snapshots-modal')?.classList.remove('open');
+  showToast('⏪ تم استعادة اللقطة بنجاح!', 'success');
+}
+
+function renderSnapshotsUI() {
+  const container = document.getElementById('snapshots-items-list');
+  if (!container) return;
+  const snapshots = getSnapshots();
+
+  if (snapshots.length === 0) {
+    container.innerHTML = `<div class="empty-state" style="padding:20px;"><p>لا توجد لقطات تاريخية محفوطة ⏪</p></div>`;
+    return;
+  }
+
+  container.innerHTML = snapshots.map(s => {
+    const timeStr = new Date(s.timestamp).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+    return `
+      <div style="background:var(--surface-hover);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <strong style="font-size:0.88rem;color:var(--text-main);display:block;">${s.reason}</strong>
+          <span style="font-size:0.72rem;color:var(--text-muted);">${timeStr} • ${s.count} مهمة</span>
+        </div>
+        <button class="chip-btn" onclick="restoreSnapshot('${s.id}')" style="margin:0;padding:6px 12px;font-size:0.78rem;background:var(--primary);color:#fff;border:none;">استعادة ⏪</button>
+      </div>
+    `;
+  }).join('');
+}
+
+// Smart Merge Import
 function importData(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
       const importedTasks = JSON.parse(e.target.result);
       if (Array.isArray(importedTasks)) {
-        tasks = importedTasks;
+        createSnapshot('قبل الاستيراد والدمج');
+        let mergedCount = 0;
+        const existingIds = new Set(tasks.map(t => t.id));
+
+        importedTasks.forEach(imp => {
+          if (imp && imp.id && !existingIds.has(imp.id)) {
+            tasks.push(imp);
+            mergedCount++;
+          }
+        });
+
         saveData();
         renderTasks();
-        showToast('📤 تم استرجاع واستيراد المهام بنجاح!', 'success');
+        showToast(`📤 تم دمج ${mergedCount} مهمة جديدة بنجاح!`, 'success');
       } else {
         showToast('⚠️ ملف النسخة الاحتياطية غير صالح', 'error');
       }
@@ -1390,17 +1608,89 @@ function importData(file) {
 }
 
 function clearCompletedTasks() {
-  const completedCount = tasks.filter(t => t.completed).length;
-  if (completedCount === 0) {
+  const completedTasks = tasks.filter(t => t.completed);
+  if (completedTasks.length === 0) {
     showToast('لا توجد مهام مكتملة لمسحها', 'info');
     return;
   }
-  if (!confirm(`هل أنت متأكد من مسح ${completedCount} مهمة مكتملة؟`)) return;
+  if (!confirm(`هل أنت متأكد من نقل ${completedTasks.length} مهمة مكتملة إلى السلة؟`)) return;
+
+  createSnapshot('مسح المكتملة');
+  const trash = getTrash();
+  completedTasks.forEach(t => {
+    trash.unshift({ ...t, deletedAt: Date.now() });
+  });
+  saveTrash(trash);
+
   tasks = tasks.filter(t => !t.completed);
   saveData();
   renderTasks();
-  showToast('🧹 تم مسح المهام المكتملة', 'info');
+  showToast('🧹 تم نقل المهام المكتملة إلى سلة المهملات', 'info');
 }
+
+// PIN Protection Security
+function checkPINProtection() {
+  const pin = localStorage.getItem(PIN_KEY);
+  const btn = document.getElementById('toggle-pin-btn');
+  const desc = document.getElementById('pin-status-desc');
+
+  if (pin) {
+    if (btn) btn.textContent = 'إلغاء القفل 🔓';
+    if (desc) desc.textContent = '🔒 التطبيق محمى برمز PIN';
+    if (!sessionStorage.getItem('pin_unlocked')) {
+      document.getElementById('pin-entry-modal')?.classList.add('open');
+    }
+  } else {
+    if (btn) btn.textContent = 'تفعيل 🔒';
+    if (desc) desc.textContent = 'تشفير وحماية التطبيق برمز سرى';
+  }
+}
+
+function togglePINSetting() {
+  const currentPin = localStorage.getItem(PIN_KEY);
+  if (currentPin) {
+    const input = prompt('أدخل رمز PIN الحالي لإلغاء القفل:');
+    if (input === currentPin) {
+      localStorage.removeItem(PIN_KEY);
+      sessionStorage.removeItem('pin_unlocked');
+      checkPINProtection();
+      showToast('🔓 تم إلغاء قفل البيانات برمز PIN', 'info');
+    } else if (input !== null) {
+      showToast('⚠️ رمز PIN غير صحيح', 'error');
+    }
+  } else {
+    const newPin = prompt('أنشئ رمز PIN سري مكون من 4 أرقام:');
+    if (newPin && /^\d{4}$/.test(newPin.trim())) {
+      localStorage.setItem(PIN_KEY, newPin.trim());
+      sessionStorage.setItem('pin_unlocked', 'true');
+      checkPINProtection();
+      showToast('🔒 تم تفعيل قفل PIN بنجاح!', 'success');
+    } else if (newPin !== null) {
+      showToast('⚠️ ينبغي كتابة 4 أرقام فقط', 'error');
+    }
+  }
+}
+
+function verifyPINInput() {
+  const input = document.getElementById('pin-digit-input');
+  if (!input) return;
+  const val = input.value.trim();
+  const currentPin = localStorage.getItem(PIN_KEY);
+
+  if (val === currentPin) {
+    sessionStorage.setItem('pin_unlocked', 'true');
+    document.getElementById('pin-entry-modal')?.classList.remove('open');
+    showToast('🔓 مرحباً بك! تم الفتح بنجاح', 'success');
+  } else {
+    showToast('⚠️ رمز PIN خطأ! حاول مجدداً', 'error');
+    input.value = '';
+    input.focus();
+  }
+}
+
+window.restoreTaskFromTrash = restoreTaskFromTrash;
+window.permanentlyDeleteTrashTask = permanentlyDeleteTrashTask;
+window.restoreSnapshot = restoreSnapshot;
 
 // =============================================
 //  Swipe Gestures & Voice Memos
@@ -2370,4 +2660,30 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('share-card-modal')?.classList.remove('open');
   });
   document.getElementById('download-share-card-btn')?.addEventListener('click', downloadShareCard);
+
+  // ---- Trash & Snapshots Modals ----
+  document.getElementById('open-trash-btn')?.addEventListener('click', () => {
+    renderTrashUI();
+    document.getElementById('trash-modal')?.classList.add('open');
+  });
+  document.getElementById('trash-close-btn')?.addEventListener('click', () => {
+    document.getElementById('trash-modal')?.classList.remove('open');
+  });
+  document.getElementById('empty-trash-btn')?.addEventListener('click', emptyTrash);
+
+  document.getElementById('open-snapshots-btn')?.addEventListener('click', () => {
+    renderSnapshotsUI();
+    document.getElementById('snapshots-modal')?.classList.add('open');
+  });
+  document.getElementById('snapshots-close-btn')?.addEventListener('click', () => {
+    document.getElementById('snapshots-modal')?.classList.remove('open');
+  });
+
+  // ---- PIN Security ----
+  document.getElementById('toggle-pin-btn')?.addEventListener('click', togglePINSetting);
+  document.getElementById('pin-submit-btn')?.addEventListener('click', verifyPINInput);
+  document.getElementById('pin-digit-input')?.addEventListener('keyup', (e) => {
+    if (e.target.value.trim().length === 4) verifyPINInput();
+  });
 });
+

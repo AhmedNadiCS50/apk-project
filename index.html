@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Readex+Pro:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=19" />
+  <link rel="stylesheet" href="css/styles.css?v=20" />
 </head>
 <body>
 
@@ -352,21 +352,52 @@
       </div>
     </div>
 
-    <!-- Database Info -->
+    <!-- Database Info & Quota -->
     <div class="settings-card">
-      <p class="settings-title">🗄️ حالة التخزين</p>
+      <p class="settings-title">🗄️ حالة ومساحة التخزين</p>
       <p class="settings-desc" style="color:var(--primary);font-weight:600;margin-top:4px;">⚡ IndexedDB + LocalStorage مفعّل</p>
       <p class="settings-desc" id="db-task-count-info" style="margin-top:4px;">عدد المهام: 0</p>
+
+      <!-- Quota Progress Bar -->
+      <div style="margin-top:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-muted);font-weight:600;margin-bottom:4px;">
+          <span>سعة الذاكرة المستهلكة:</span>
+          <span id="storage-quota-text">جارٍ الحساب...</span>
+        </div>
+        <div style="height:6px;width:100%;background:var(--surface-hover);border-radius:99px;overflow:hidden;">
+          <div id="storage-quota-fill" style="height:100%;width:0%;background:var(--primary);border-radius:99px;transition:width 0.5s ease;"></div>
+        </div>
+      </div>
     </div>
 
-    <!-- Backup -->
+    <!-- Security & Protection -->
     <div class="settings-card">
-      <p class="settings-title" style="margin-bottom:12px;">💾 النسخ الاحتياطي</p>
+      <div class="settings-card-row">
+        <div>
+          <p class="settings-title">🔒 قفل البيانات برمز PIN</p>
+          <p class="settings-desc" id="pin-status-desc">تشفير وحماية التطبيق برمز سرى</p>
+        </div>
+        <button class="chip-btn" id="toggle-pin-btn" style="margin:0;">تفعيل 🔒</button>
+      </div>
+    </div>
+
+    <!-- Trash & Snapshots Recovery -->
+    <div class="settings-card">
+      <p class="settings-title" style="margin-bottom:10px;">🗑️ الاستعادة والتعافي الذكي</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <button id="open-trash-btn" class="chip-btn" style="justify-content:center;padding:12px;">🗑️ سلة المهملات</button>
+        <button id="open-snapshots-btn" class="chip-btn" style="justify-content:center;padding:12px;">⏪ اللقطات التاريخية</button>
+      </div>
+    </div>
+
+    <!-- Backup & Data -->
+    <div class="settings-card">
+      <p class="settings-title" style="margin-bottom:12px;">💾 النسخ الاحتياطي والدمج</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <button id="export-data-btn" class="chip-btn" style="justify-content:center;padding:12px;">📥 تصدير</button>
-        <button id="import-trigger-btn" class="chip-btn" style="justify-content:center;padding:12px;">📤 استيراد</button>
+        <button id="import-trigger-btn" class="chip-btn" style="justify-content:center;padding:12px;">📤 دمج / استيراد</button>
       </div>
-      <button id="clear-completed-btn" class="chip-btn" style="width:100%;justify-content:center;padding:12px;color:var(--danger);border-color:var(--danger-light);">🧹 مسح المكتملة</button>
+      <button id="clear-completed-btn" class="chip-btn" style="width:100%;justify-content:center;padding:12px;color:var(--danger);border-color:var(--danger-light);">🧹 مسح المكتملة (إلى السلة)</button>
     </div>
   </div>
 
@@ -579,6 +610,48 @@
   </div>
 </div>
 
-<script src="js/app.js?v=19"></script>
+<!-- TRASH & RECOVERY MODAL -->
+<div class="modal-overlay" id="trash-modal" role="dialog" aria-modal="true">
+  <div class="modal-card" style="max-height:85vh;display:flex;flex-direction:column;">
+    <div class="modal-header">
+      <h2>🗑️ سلة المهملات (المهام المحذوفة)</h2>
+      <button class="icon-btn" id="trash-close-btn" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;">تتم استعادة المهام بضغطة زر. يتم تنظيف السلة أوتوماتيكياً بعد 30 يوماً.</p>
+    <div id="trash-items-list" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;min-height:120px;"></div>
+    <button id="empty-trash-btn" class="chip-btn" style="width:100%;justify-content:center;padding:12px;color:var(--danger);border-color:var(--danger-light);">🧹 تفريغ السلة تماماً</button>
+  </div>
+</div>
+
+<!-- AUTO SNAPSHOTS RECOVERY MODAL -->
+<div class="modal-overlay" id="snapshots-modal" role="dialog" aria-modal="true">
+  <div class="modal-card" style="max-height:85vh;display:flex;flex-direction:column;">
+    <div class="modal-header">
+      <h2>⏪ اللقطات التاريخية التلقائية</h2>
+      <button class="icon-btn" id="snapshots-close-btn" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;">يتم حفظ لقطات احتياطية تلقائياً قبل التغييرات الكبيرة للعودة إليها بسهولة.</p>
+    <div id="snapshots-items-list" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;min-height:120px;"></div>
+  </div>
+</div>
+
+<!-- PIN SECURITY ENTRY MODAL -->
+<div class="modal-overlay" id="pin-entry-modal" role="dialog" aria-modal="true" style="z-index:400;background:rgba(5,10,20,0.95);backdrop-filter:blur(30px);">
+  <div class="modal-card" style="text-align:center;max-width:340px;padding:28px 20px;">
+    <div style="font-size:3rem;margin-bottom:10px;">🔒</div>
+    <h2 style="font-size:1.2rem;font-weight:800;color:var(--text-main);margin-bottom:6px;">التطبيق مقفل برمز PIN</h2>
+    <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:18px;">أدخل الرمز السري المكون من 4 أرقام للوصول لملاحظاتك</p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:20px;">
+      <input type="password" id="pin-digit-input" maxlength="4" pattern="\d{4}" class="form-control" placeholder="••••" style="text-align:center;font-size:1.6rem;letter-spacing:12px;max-width:180px;padding:10px 14px;" />
+    </div>
+    <button id="pin-submit-btn" class="btn-primary" style="margin:0;width:100%;">فتح التطبيق 🔓</button>
+  </div>
+</div>
+
+<script src="js/app.js?v=20"></script>
 </body>
 </html>
