@@ -1,16 +1,16 @@
 /* ═══════════════════════════════════════════════
    TaskFlow v8 – Living Themes + Rich Animations
    ═══════════════════════════════════════════════ */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Readex+Pro:wght@300;400;500;600;700;800&display=swap');
 
 /* ═══════════════════════════════════════
    LIGHT MODE BASE (default)
    ═══════════════════════════════════════ */
 :root {
   /* ── Backgrounds ── */
-  --bg-gradient: radial-gradient(ellipse at 20% 20%, #e0f2fe 0%, #f0fdfa 40%, #fdf4ff 80%, #fff7ed 100%);
+  --bg-gradient: radial-gradient(ellipse at 15% 15%, #e0f2fe 0%, #f0fdfa 45%, #fdf4ff 85%, #fff7ed 100%);
   --bg-main: #f8fafc;
-  --surface: rgba(255,255,255,0.90);
+  --surface: rgba(255,255,255,0.85);
   --surface-solid: #ffffff;
   --surface-hover: #f1f5f9;
 
@@ -39,15 +39,15 @@
   --warning: #f59e0b;
 
   /* ── Shadows ── */
-  --shadow-sm: 0 2px 12px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04);
-  --shadow-md: 0 8px 24px rgba(13,148,136,0.12), 0 2px 8px rgba(15,23,42,0.06);
-  --shadow-lg: 0 20px 50px rgba(15,23,42,0.12), 0 6px 20px rgba(15,23,42,0.06);
-  --shadow-glow: 0 0 24px var(--primary-glow);
+  --shadow-sm: 0 4px 14px rgba(15,23,42,0.05), 0 1px 3px rgba(15,23,42,0.03);
+  --shadow-md: 0 12px 32px rgba(13,148,136,0.14), 0 4px 12px rgba(15,23,42,0.05);
+  --shadow-lg: 0 24px 60px rgba(15,23,42,0.14), 0 8px 24px rgba(15,23,42,0.06);
+  --shadow-glow: 0 0 28px var(--primary-glow);
 
   /* ── Orb colors ── */
-  --orb1: rgba(13,148,136,0.22);
-  --orb2: rgba(234,88,12,0.18);
-  --orb3: rgba(168,85,247,0.15);
+  --orb1: rgba(13,148,136,0.25);
+  --orb2: rgba(234,88,12,0.20);
+  --orb3: rgba(168,85,247,0.18);
 
   /* ── Utils ── */
   --radius-sm: 14px;
@@ -338,7 +338,7 @@
 *, *::before, *::after {
   box-sizing: border-box; margin: 0; padding: 0;
   -webkit-tap-highlight-color: transparent;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Readex Pro', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -901,36 +901,46 @@ body { display: flex; justify-content: flex-start; align-items: flex-start; }
   background: var(--surface-solid);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 15px 16px;
-  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
   transition: var(--spring); box-shadow: var(--shadow-sm);
-  animation: taskPopIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  animation: taskPopIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   position: relative; overflow: hidden;
+  backdrop-filter: var(--glass-backdrop);
 }
 
-/* Left accent bar that pulses */
+/* Glass hairline top specular highlight */
+.task-card::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  pointer-events: none;
+}
+
+/* Right glowing priority stripe */
 .task-card::before {
   content: '';
-  position: absolute; right: 0; top: 12px; bottom: 12px; width: 3px;
+  position: absolute; right: 0; top: 10px; bottom: 10px; width: 4px;
   background: linear-gradient(180deg, var(--primary), var(--secondary));
-  border-radius: 3px 0 0 3px;
-  opacity: 0; transform: scaleY(0);
+  border-radius: 4px 0 0 4px;
+  opacity: 0.8; transform: scaleY(0.7);
   transition: var(--spring);
 }
 .task-card:hover::before { opacity: 1; transform: scaleY(1); }
 
 @keyframes taskPopIn {
-  0%   { opacity: 0; transform: translateY(18px) scale(0.95); }
+  0%   { opacity: 0; transform: translateY(22px) scale(0.94); }
+  60%  { opacity: 1; transform: translateY(-3px) scale(1.01); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .task-card:hover {
   border-color: var(--border-focus);
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-md), 0 0 0 1px var(--primary-light);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: var(--shadow-md), 0 0 20px var(--primary-glow);
 }
 
-.task-card.completed { opacity: 0.58; background: var(--surface); border-color: transparent; }
+.task-card.completed { opacity: 0.55; background: var(--surface); border-color: transparent; }
 .task-card.completed .task-title { text-decoration: line-through; color: var(--text-muted); }
 .task-card.completed::before { display: none; }
 
