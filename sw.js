@@ -3,7 +3,7 @@ const CACHE_NAME = 'taskflow-cache-v12';
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=11',
+  './css/styles.css?v=12',
   './js/app.js?v=11',
   './manifest.json',
   './icons/icon-192.png',

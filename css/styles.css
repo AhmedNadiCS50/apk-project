@@ -304,17 +304,17 @@ html, body {
   100% { transform: translate(-60%,-40%) scale(0.8); opacity: 0.3; }
 }
 
-body { display: flex; justify-content: center; align-items: flex-start; }
+body { display: flex; justify-content: flex-start; align-items: flex-start; }
 
 /* ═══════════════════════════════════════
    APP SHELL
    ═══════════════════════════════════════ */
 .app-container {
-  width: 100%; max-width: 500px; min-height: 100dvh;
+  width: 100%; max-width: 100%; min-height: 100dvh;
   background: var(--bg-main);
   display: flex; flex-direction: column;
   position: relative;
-  box-shadow: var(--shadow-lg);
+  box-shadow: none;
   padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
   padding-top: env(safe-area-inset-top, 0px);
   z-index: 1;
@@ -322,14 +322,14 @@ body { display: flex; justify-content: center; align-items: flex-start; }
 }
 
 @media (min-width: 768px) {
-  body { padding: 24px 16px; }
+  body { padding: 0; }
   .app-container {
-    max-width: 780px;
-    min-height: calc(100dvh - 48px);
-    border-radius: var(--radius-lg);
+    max-width: 100%;
+    min-height: 100dvh;
+    border-radius: 0;
     overflow: hidden;
-    border: 1px solid var(--border);
-    box-shadow: 0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px var(--border);
+    border: none;
+    box-shadow: none;
   }
 }
 
