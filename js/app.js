@@ -1907,50 +1907,106 @@ if ('serviceWorker' in navigator) {
 }
 
 // =============================================
-//  Calendar View System
+//  Calendar View System — Enhanced v2
 // =============================================
 let currentCalDate = new Date();
 let selectedCalDateStr = new Date().toISOString().slice(0, 10);
+let calendarFilter = 'all'; // 'all' | 'pending' | 'done'
+
+/* Priority colour mapping for heatmap dots */
+const PRIORITY_DOT_COLOR = {
+  high:   '#ef4444',
+  medium: '#f59e0b',
+  low:    '#22c55e'
+};
+
+function getMonthTasks(year, month) {
+  const pad = n => String(n).padStart(2, '0');
+  const prefix = `${year}-${pad(month + 1)}`;
+  return tasks.filter(t => t.dueDate && t.dueDate.startsWith(prefix));
+}
+
+function updateCalMonthlyOverview() {
+  const year  = currentCalDate.getFullYear();
+  const month = currentCalDate.getMonth();
+  const monthTasks = getMonthTasks(year, month);
+  const total  = monthTasks.length;
+  const done   = monthTasks.filter(t => t.completed).length;
+  const remain = total - done;
+  const pct    = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  const toArabicNumerals = n => String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+
+  const elTotal  = document.getElementById('cal-stat-total');
+  const elDone   = document.getElementById('cal-stat-done');
+  const elRemain = document.getElementById('cal-stat-remain');
+  const elFill   = document.getElementById('cal-month-progress-fill');
+
+  if (elTotal)  elTotal.textContent  = `📋 ${toArabicNumerals(total)} مهمة`;
+  if (elDone)   elDone.textContent   = `✅ ${toArabicNumerals(done)} مكتملة`;
+  if (elRemain) elRemain.textContent = `⏳ ${toArabicNumerals(remain)} متبقية`;
+  if (elFill)   elFill.style.width   = `${pct}%`;
+}
 
 function renderCalendar() {
-  const grid = document.getElementById('calendar-days-grid');
+  const grid    = document.getElementById('calendar-days-grid');
   const titleEl = document.getElementById('cal-month-year-title');
   if (!grid || !titleEl) return;
 
-  const year = currentCalDate.getFullYear();
+  const year  = currentCalDate.getFullYear();
   const month = currentCalDate.getMonth();
 
-  const monthNames = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  const monthNames = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
   titleEl.textContent = `${monthNames[month]} ${year}`;
 
+  // Sunday-first week. getDay() is 0-6 where 0=Sunday (already correct for Arabic-RTL display)
   const firstDayIndex = new Date(year, month, 1).getDay();
-  const totalDays = new Date(year, month + 1, 0).getDate();
+  const totalDays     = new Date(year, month + 1, 0).getDate();
+  const todayStr      = new Date().toISOString().slice(0, 10);
 
   let html = '';
 
+  // Empty leading cells
   for (let i = 0; i < firstDayIndex; i++) {
-    html += `<div class="cal-day empty" style="padding:10px;opacity:0.2;"></div>`;
+    html += `<div class="cal-day empty"></div>`;
   }
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-
   for (let d = 1; d <= totalDays; d++) {
-    const dayDateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
-    const dayTasks = tasks.filter(t => t.dueDate === dayDateStr || isTodayMatch(t.createdAt, dayDateStr));
-    const hasTasks = dayTasks.length > 0;
+    const pad = n => String(n).padStart(2, '0');
+    const dayDateStr = `${year}-${pad(month + 1)}-${pad(d)}`;
+    const dayTasks   = tasks.filter(t => t.dueDate === dayDateStr);
+    const hasTasks   = dayTasks.length > 0;
     const isSelected = dayDateStr === selectedCalDateStr;
-    const isToday = dayDateStr === todayStr;
+    const isToday    = dayDateStr === todayStr;
 
-    html += `
-      <div class="cal-day ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''} ${hasTasks ? 'has-tasks' : ''}"
-           onclick="selectCalendarDate('${dayDateStr}')"
-           style="padding:10px 4px;border-radius:var(--radius-sm);cursor:pointer;position:relative;background:${isSelected ? 'var(--primary)' : (isToday ? 'var(--primary-light)' : 'var(--surface-hover)')};color:${isSelected ? '#fff' : 'var(--text-main)'};font-weight:${isSelected || isToday ? '800' : '600'};border:1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'};transition:var(--spring);">
-        <span>${d}</span>
-        ${hasTasks ? `<span style="position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:${isSelected ? '#fff' : 'var(--primary)'};"></span>` : ''}
-      </div>`;
+    // Build up to 3 priority dots, sorted: high → medium → low
+    let dotsHtml = '';
+    if (hasTasks) {
+      const priorities = dayTasks.map(t => t.priority || 'low');
+      const order = ['high', 'medium', 'low'];
+      const sorted = priorities.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      const displayed = [...new Set(sorted)].slice(0, 3);
+      dotsHtml = `<div class="cal-day-dots">${displayed.map(p =>
+        `<span class="cal-dot" style="background:${isSelected ? '#fff' : PRIORITY_DOT_COLOR[p] || 'var(--primary)'}"></span>`
+      ).join('')}</div>`;
+    }
+
+    const classes = [
+      'cal-day',
+      isToday    ? 'today'    : '',
+      isSelected ? 'selected' : '',
+      hasTasks   ? 'has-tasks': ''
+    ].filter(Boolean).join(' ');
+
+    html += `<div class="${classes}" onclick="selectCalendarDate('${dayDateStr}')" role="button" tabindex="0" aria-label="${d}">
+      <span class="cal-day-num">${d}</span>
+      ${dotsHtml}
+    </div>`;
   }
 
   grid.innerHTML = html;
+
+  updateCalMonthlyOverview();
   renderSelectedCalDateTasks();
 }
 
@@ -1966,17 +2022,24 @@ function selectCalendarDate(dateStr) {
 
 function renderSelectedCalDateTasks() {
   const container = document.getElementById('calendar-selected-tasks-list');
-  const title = document.getElementById('selected-date-title');
+  const title     = document.getElementById('selected-date-title');
   if (!container) return;
 
-  const d = new Date(selectedCalDateStr + 'T00:00:00');
+  const d             = new Date(selectedCalDateStr + 'T00:00:00');
   const dateFormatted = d.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   if (title) title.textContent = `📅 مهام يوم: ${dateFormatted}`;
 
-  const dayTasks = tasks.filter(t => t.dueDate === selectedCalDateStr || isTodayMatch(t.createdAt, selectedCalDateStr));
+  let dayTasks = tasks.filter(t => t.dueDate === selectedCalDateStr);
+
+  // Apply filter
+  if (calendarFilter === 'pending') dayTasks = dayTasks.filter(t => !t.completed);
+  if (calendarFilter === 'done')    dayTasks = dayTasks.filter(t =>  t.completed);
 
   if (dayTasks.length === 0) {
-    container.innerHTML = `<div class="empty-state" style="padding:24px;"><p>لا توجد مهام محددة لهذا اليوم ☕</p></div>`;
+    const emptyMsg = calendarFilter === 'all'
+      ? `<div class="empty-state" style="padding:24px;"><p>لا توجد مهام لهذا اليوم ☕</p></div>`
+      : `<div class="empty-state" style="padding:24px;"><p>لا توجد مهام مطابقة للفلتر 🔍</p></div>`;
+    container.innerHTML = emptyMsg;
     return;
   }
 
@@ -2217,6 +2280,7 @@ function downloadShareCard() {
 window.selectCalendarDate = selectCalendarDate;
 
 document.addEventListener('DOMContentLoaded', () => {
+  // ---- Calendar navigation ----
   document.getElementById('cal-prev-month')?.addEventListener('click', () => {
     currentCalDate.setMonth(currentCalDate.getMonth() - 1);
     renderCalendar();
@@ -2225,6 +2289,37 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('cal-next-month')?.addEventListener('click', () => {
     currentCalDate.setMonth(currentCalDate.getMonth() + 1);
     renderCalendar();
+  });
+
+  // Jump to Today
+  document.getElementById('cal-jump-today')?.addEventListener('click', () => {
+    currentCalDate = new Date();
+    selectedCalDateStr = new Date().toISOString().slice(0, 10);
+    renderCalendar();
+  });
+
+  // Quick Add to Selected Date
+  document.getElementById('cal-quick-add-btn')?.addEventListener('click', () => {
+    // Pre-fill the task form with the selected calendar date then open the modal
+    const modal = document.getElementById('task-modal');
+    const dueDateInput = document.getElementById('task-due-date');
+    if (dueDateInput) dueDateInput.value = selectedCalDateStr;
+    if (modal) {
+      modal.classList.add('open');
+      // Reset other fields
+      const titleInput = document.getElementById('task-title');
+      if (titleInput) { titleInput.value = ''; titleInput.focus(); }
+    }
+  });
+
+  // Calendar filter tabs
+  document.getElementById('cal-filter-tabs')?.addEventListener('click', e => {
+    const btn = e.target.closest('.cal-filter-tab');
+    if (!btn) return;
+    document.querySelectorAll('.cal-filter-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    calendarFilter = btn.dataset.filter;
+    renderSelectedCalDateTasks();
   });
 
   document.getElementById('ai-subtask-btn')?.addEventListener('click', generateAISubtasks);
