@@ -1,5 +1,5 @@
-// TaskFlow Service Worker v21 – RPG Hero, Kanban Board, Eisenhower Matrix & Instant QR Sharing
-const CACHE_NAME = 'taskflow-cache-v21';
+// TaskFlow Service Worker v22 – Flow AI Local Chatbot
+const CACHE_NAME = 'taskflow-cache-v22';
 const ASSETS = [
   './',
   './index.html',

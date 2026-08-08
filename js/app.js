@@ -2957,4 +2957,252 @@ function shareTaskViaQR(taskId) {
 
 window.shareTaskViaQR = shareTaskViaQR;
 
+// =============================================
+//  FLOW AI — Local Chatbot Engine (100% Offline)
+// =============================================
 
+let chatbotOpen = false;
+let chatHistory = [];
+const BOT_DELAY_MS = 700;
+
+// ─── UI Helpers ───
+function openChatbot() {
+  const panel = document.getElementById('chatbot-panel');
+  if (!panel) return;
+  chatbotOpen = true;
+  panel.style.display = 'flex';
+  panel.style.animation = 'chatPanelIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both';
+  document.getElementById('chatbot-unread-dot').style.display = 'none';
+  if (chatHistory.length === 0) {
+    const greeting = getGreeting();
+    appendBotMessage(greeting, false);
+  }
+  setTimeout(() => {
+    const input = document.getElementById('chatbot-input');
+    if (input) input.focus();
+    scrollChatToBottom();
+  }, 150);
+}
+
+function closeChatbot() {
+  const panel = document.getElementById('chatbot-panel');
+  if (!panel) return;
+  chatbotOpen = false;
+  panel.style.animation = 'none';
+  panel.style.display = 'none';
+}
+
+function scrollChatToBottom() {
+  const msgs = document.getElementById('chatbot-messages');
+  if (msgs) msgs.scrollTop = msgs.scrollHeight;
+}
+
+function appendUserMessage(text) {
+  const msgs = document.getElementById('chatbot-messages');
+  if (!msgs) return;
+  const div = document.createElement('div');
+  div.className = 'chat-msg user-msg';
+  div.innerHTML = `<div class="chat-bubble">${escapeHtml(text)}</div>`;
+  msgs.appendChild(div);
+  scrollChatToBottom();
+}
+
+function appendBotMessage(text, withTyping = true) {
+  const msgs = document.getElementById('chatbot-messages');
+  if (!msgs) return;
+
+  if (withTyping) {
+    const typingEl = document.createElement('div');
+    typingEl.className = 'chat-msg bot-msg';
+    typingEl.id = 'chat-typing-indicator';
+    typingEl.innerHTML = `
+      <div class="bot-avatar-icon">🤖</div>
+      <div class="typing-indicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>`;
+    msgs.appendChild(typingEl);
+    scrollChatToBottom();
+
+    setTimeout(() => {
+      const typing = document.getElementById('chat-typing-indicator');
+      if (typing) typing.remove();
+      addBotBubble(msgs, text);
+    }, BOT_DELAY_MS);
+  } else {
+    addBotBubble(msgs, text);
+  }
+}
+
+function addBotBubble(msgs, text) {
+  const div = document.createElement('div');
+  div.className = 'chat-msg bot-msg';
+  div.innerHTML = `<div class="bot-avatar-icon">🤖</div><div class="chat-bubble">${text}</div>`;
+  msgs.appendChild(div);
+  scrollChatToBottom();
+  chatHistory.push({ role: 'bot', text });
+}
+
+// ─── Greeting ───
+function getGreeting() {
+  const hour = new Date().getHours();
+  const name = document.getElementById('header-username')?.textContent?.replace('👋', '')?.trim() || 'صديقي';
+  const timeGreet = hour < 12 ? '☀️ صباح الخير' : hour < 18 ? '🌤️ مساء النور' : '🌙 مساء الخير';
+  const total = tasks.length;
+  const pending = tasks.filter(t => !t.completed).length;
+  const streak = getStreakData().days;
+  return `${timeGreet} ${name}! أنا <strong>Flow AI</strong> 🤖 مساعدك الذكي الشخصي الذي يعمل بدون نت.<br><br>عندك <strong>${pending} مهمة</strong> معلقة من أصل ${total} و<strong>سلسلتك ${streak} 🔥 يوم</strong>.<br><br>اسألني عن مهامك أو قل لي "ضيف مهمة" وأنا أساعدك!`;
+}
+
+// ─── Core NLP Engine ───
+function processChatInput(rawInput) {
+  const msg = rawInput.trim().toLowerCase();
+  chatHistory.push({ role: 'user', text: rawInput });
+
+  // ── Task Count / Today ──
+  if (/كام مهمة|عندي كام|المهام النهارده|tasks today|مهام اليوم/.test(msg)) {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayTasks = tasks.filter(t => t.dueDate === todayStr || isToday(t.createdAt));
+    const done = todayTasks.filter(t => t.completed).length;
+    return `📋 عندك <strong>${todayTasks.length} مهمة</strong> اليوم — ✅ ${done} مكتملة و⏳ ${todayTasks.length - done} معلقة.<br><br>${todayTasks.filter(t => !t.completed).slice(0, 3).map(t => `• ${t.title}`).join('<br>')}`;
+  }
+
+  // ── Total Tasks ──
+  if (/كل المهام|إجمالي|total|كام في المجموع/.test(msg)) {
+    const done = tasks.filter(t => t.completed).length;
+    return `📊 عندك <strong>${tasks.length} مهمة</strong> إجمالاً — ✅ ${done} مكتملة و⏳ ${tasks.length - done} معلقة.`;
+  }
+
+  // ── Priorities / Urgent ──
+  if (/أولويات|أهم|عاجل|urgent|مهم دلوقتي|أبدأ بإيه|أبدأ بايه/.test(msg)) {
+    const urgent = tasks.filter(t => !t.completed && t.priority === 'high').slice(0, 4);
+    if (urgent.length === 0) return `🎉 ممتاز! مفيش مهام عالية الأولوية معلقة دلوقتي. ابدأ بأي مهمة عادية!`;
+    return `⚡ أهم مهامك دلوقتي:<br><br>${urgent.map((t, i) => `${i + 1}. 🔴 <strong>${t.title}</strong>${t.dueDate ? ` (${t.dueDate})` : ''}`).join('<br>')}`;
+  }
+
+  // ── Streak ──
+  if (/سلسلة|streak|كام يوم|أيام متتالية/.test(msg)) {
+    const s = getStreakData();
+    const msg2 = s.days >= 7 ? '🔥 رائع جداً! استمر على هذا المستوى!' : s.days >= 3 ? '💪 ممتاز! أنت في المسار الصح.' : 'ابدأ بإنجاز مهمة اليوم لتحافظ على سلسلتك!';
+    return `🔥 سلسلتك الحالية <strong>${s.days} يوم</strong> متتالي!<br><br>${msg2}`;
+  }
+
+  // ── Stats / Progress ──
+  if (/إحصائيات|stats|تقدمي|إنجازي|progress/.test(msg)) {
+    const done = tasks.filter(t => t.completed).length;
+    const pct = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0;
+    const rpg = getRPGData();
+    const level = Math.floor(rpg.xp / 150) + 1;
+    return `📊 إحصائياتك:<br><br>✅ مكتملة: <strong>${done}</strong> من ${tasks.length} (${pct}%)<br>🛡️ مستواك: <strong>Lv ${level}</strong> (${rpg.xp} XP)<br>🔥 السلسلة: <strong>${getStreakData().days} يوم</strong>`;
+  }
+
+  // ── Pending / Remaining ──
+  if (/المعلقة|المتبقية|pending|لسه مخلصتش|لسه ما خلصتش/.test(msg)) {
+    const pending = tasks.filter(t => !t.completed);
+    if (pending.length === 0) return `🎉 أنجزت كل مهامك! استحق راحة أو أضف مهام جديدة.`;
+    return `⏳ عندك <strong>${pending.length} مهمة</strong> معلقة:<br><br>${pending.slice(0, 5).map(t => `• ${t.priority === 'high' ? '🔴' : t.priority === 'medium' ? '🟡' : '🟢'} ${t.title}`).join('<br>')}${pending.length > 5 ? `<br><em>...و${pending.length - 5} مهام أخرى</em>` : ''}`;
+  }
+
+  // ── Add Task via Chat ──
+  if (/ضيف مهمة|أضف مهمة|ضيف تاسك|add task|عايز أضيف|حب اضيف/.test(msg)) {
+    return `📝 تمام! اكتبلي المهمة بالشكل ده:<br><br><strong>اسم المهمة: [العنوان]</strong><br><em>مثال: اسم المهمة: مراجعة الدرس</em><br><br>أو قل مثلاً: <strong>"أضف مهمة تمرين"</strong>`;
+  }
+
+  // ── Direct Add Task ──
+  const addMatch = msg.match(/أضف مهمة (.+)|ضيف (.+)|add task (.+)/);
+  if (addMatch) {
+    const title = (addMatch[1] || addMatch[2] || addMatch[3])?.trim();
+    if (title && title.length > 2) {
+      addTask({ title, category: 'personal', priority: 'medium', description: '', subtasks: [] });
+      addRPGExperience(10, 'personal');
+      return `✅ تمام! ضفت مهمة "<strong>${title}</strong>" بنجاح!<br>تلاقيها في قائمة المهام. 🎯`;
+    }
+  }
+
+  // ── اسم المهمة: ──
+  const namedMatch = rawInput.match(/اسم المهمة[:\s]+(.+)/i);
+  if (namedMatch) {
+    const title = namedMatch[1].trim();
+    addTask({ title, category: 'personal', priority: 'medium', description: '', subtasks: [] });
+    addRPGExperience(10, 'personal');
+    return `✅ أضفت مهمة "<strong>${title}</strong>" لقائمتك! يلا تعمل حاجة كويسة كده 💪`;
+  }
+
+  // ── Productivity Tips ──
+  if (/نصيحة|tip|كيف أنتج|كيف أركز|تركيز|إنتاجية/.test(msg)) {
+    const tips = [
+      '🍅 جرب تقنية البومودورو — اشتغل 25 دقيقة ثم خد راحة 5 دقائق. مفعولها سحري!',
+      '📋 ابدأ يومك بكتابة 3 مهام أساسية فقط، وركز عليهم أولاً.',
+      '🐸 "ابلع الضفدعة" — ابدأ بأصعب مهمة في الصبح وباقي اليوم هيبقى سهل!',
+      '📱 قطع الإشعارات أثناء وقت العمل العميق. التشتت بيكلف 23 دقيقة لاسترداد التركيز.',
+      '⏰ قسّم المهام الكبيرة لخطوات صغيرة — كل خطوة هتحسسك بالإنجاز وتحمسك.',
+      '🌅 ساعة الصبح الأولى هي أقوى ساعة إنتاجية — استثمرها في أهم مهمة.',
+      '📵 "الوضع الطيارة" أثناء العمل العميق = تضاعف الإنتاجية!'
+    ];
+    return tips[Math.floor(Math.random() * tips.length)];
+  }
+
+  // ── Greeting ──
+  if (/أهلاً|مرحبا|هاي|هاي|سلام|صباح|مساء|hello|hi/.test(msg)) {
+    return getGreeting();
+  }
+
+  // ── Help ──
+  if (/مساعدة|ايه اللي تعرفه|إيه اللي تعرفه|help|قدر|تقدر/.test(msg)) {
+    return `🤖 أنا <strong>Flow AI</strong> وأقدر أساعدك في:<br><br>📋 <strong>المهام</strong> — سألني عن مهامك، أولوياتك أو المعلقة<br>➕ <strong>إضافة مهمة</strong> — قل "ضيف مهمة [العنوان]"<br>🔥 <strong>سلسلتك</strong> — "كام يوم سلسلتي؟"<br>📊 <strong>إحصائياتك</strong> — "إيه إحصائياتي؟"<br>💡 <strong>نصيحة</strong> — "ادّيني نصيحة إنتاجية"<br><br>وكل ده بدون نت! 🚀`;
+  }
+
+  // ── Fallback ──
+  const fallbacks = [
+    `🤔 مش فاهم قصدك تماماً. جرب تسألني عن مهامك أو قل "مساعدة" عشان أشوف إيه اللي أقدر أعمله!`,
+    `💭 ممكن توضح أكتر؟ مثلاً: "كام مهمة عندي؟" أو "ضيف مهمة اسمها..."`,
+    `🤖 ده خارج نطاق معرفتي دلوقتي! بس أنا خبير في مهامك وإنتاجيتك — اسألني عنهم!`
+  ];
+  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+}
+
+// ─── Send Handler ───
+function sendChatMessage() {
+  const input = document.getElementById('chatbot-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  appendUserMessage(text);
+  const reply = processChatInput(text);
+  appendBotMessage(reply, true);
+}
+
+// ─── Init ───
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('chatbot-fab')?.addEventListener('click', () => {
+    chatbotOpen ? closeChatbot() : openChatbot();
+  });
+  document.getElementById('chatbot-close-btn')?.addEventListener('click', closeChatbot);
+  document.getElementById('chatbot-send-btn')?.addEventListener('click', sendChatMessage);
+  document.getElementById('chatbot-input')?.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') sendChatMessage();
+  });
+  document.querySelectorAll('.chat-suggestion-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById('chatbot-input');
+      if (input) {
+        input.value = btn.dataset.msg;
+        sendChatMessage();
+      }
+    });
+  });
+
+  // Show unread dot after 3 seconds on first visit
+  if (!localStorage.getItem('chatbot_greeted')) {
+    setTimeout(() => {
+      const dot = document.getElementById('chatbot-unread-dot');
+      if (dot && !chatbotOpen) {
+        dot.style.display = 'block';
+        localStorage.setItem('chatbot_greeted', '1');
+      }
+    }, 3000);
+  }
+});

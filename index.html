@@ -429,6 +429,48 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="26" height="26" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
 
+  <!-- AI Chatbot Floating Button -->
+  <button id="chatbot-fab" aria-label="المساعد الذكي" title="المساعد الذكي 🤖">
+    <span id="chatbot-fab-icon">🤖</span>
+    <span id="chatbot-unread-dot" style="display:none;position:absolute;top:4px;right:4px;width:10px;height:10px;background:#ff4757;border-radius:50%;border:2px solid var(--bg-main);"></span>
+  </button>
+
+  <!-- AI Chatbot Panel -->
+  <div id="chatbot-panel" class="chatbot-panel" role="dialog" aria-modal="true" aria-label="المساعد الذكي" style="display:none;">
+    <!-- Header -->
+    <div class="chatbot-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="chatbot-avatar">🤖</div>
+        <div>
+          <strong style="font-size:0.95rem;color:var(--text-main);display:block;">Flow AI</strong>
+          <span style="font-size:0.72rem;color:#22c55e;">● متاح دائماً — يعمل بدون نت</span>
+        </div>
+      </div>
+      <button id="chatbot-close-btn" class="icon-btn" style="width:34px;height:34px;" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Messages Container -->
+    <div id="chatbot-messages" class="chatbot-messages"></div>
+
+    <!-- Quick Suggestions -->
+    <div id="chatbot-suggestions" class="chatbot-suggestions">
+      <button class="chat-suggestion-btn" data-msg="كام مهمة عندي النهارده؟">📋 مهام اليوم</button>
+      <button class="chat-suggestion-btn" data-msg="إيه أولوياتي دلوقتي؟">⚡ أولوياتي</button>
+      <button class="chat-suggestion-btn" data-msg="كام يوم سلسلتي؟">🔥 سلسلتي</button>
+      <button class="chat-suggestion-btn" data-msg="نصيحة إنتاجية">💡 نصيحة</button>
+    </div>
+
+    <!-- Input Area -->
+    <div class="chatbot-input-area">
+      <input type="text" id="chatbot-input" class="chatbot-input" placeholder="اكتب سؤالك هنا..." autocomplete="off" dir="rtl" />
+      <button id="chatbot-send-btn" class="chatbot-send-btn" aria-label="إرسال">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
   <!-- Bottom Navigation -->
   <nav class="bottom-nav" aria-label="التنقل الرئيسي">
     <button class="nav-item active" data-view="tasks" aria-label="المهام">
