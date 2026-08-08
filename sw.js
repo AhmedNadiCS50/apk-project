@@ -1,10 +1,10 @@
-// TaskFlow Service Worker v12 – Full Rebuild & Bug Fixes
-const CACHE_NAME = 'taskflow-cache-v12';
+// TaskFlow Service Worker v14 – Advanced Themes & Animations
+const CACHE_NAME = 'taskflow-cache-v14';
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=13',
-  './js/app.js?v=11',
+  './css/styles.css?v=14',
+  './js/app.js?v=14',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'

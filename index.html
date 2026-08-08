@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="css/styles.css?v=13" />
+  <link rel="stylesheet" href="css/styles.css?v=14" />
 </head>
 <body>
 
@@ -232,26 +232,43 @@
       </div>
     </div>
 
-    <!-- Dark / Light Mode -->
+    <!-- Dark / Light / Auto Theme -->
     <div class="settings-card">
       <div class="settings-card-row">
         <div>
           <p class="settings-title">🌙 وضع الشاشة</p>
-          <p class="settings-desc">تبديل بين الداكن والفاتح</p>
+          <p class="settings-desc" id="theme-mode-desc">تبديل بين الداكن، الفاتح، أو التلقائي حسب الجهاز</p>
         </div>
-        <button class="chip-btn" id="settings-theme-btn" style="margin:0;">تبديل 🌗</button>
+        <div style="display:flex;gap:6px;">
+          <button class="chip-btn" id="settings-theme-btn" style="margin:0;">تبديل 🌗</button>
+          <button class="chip-btn" id="auto-theme-btn" style="margin:0;">تلقائي 💻</button>
+        </div>
       </div>
     </div>
 
     <!-- Color Themes -->
     <div class="settings-card">
-      <p class="settings-title" style="margin-bottom:12px;">🎨 ثيم الألوان</p>
+      <p class="settings-title" style="margin-bottom:12px;">🎨 ثيم الألوان المتقدم (8 ثيمات)</p>
       <div class="theme-swatches-grid">
         <button class="theme-swatch teal active" data-color="teal" title="Teal Breeze"></button>
         <button class="theme-swatch purple" data-color="purple" title="Cyber Purple"></button>
         <button class="theme-swatch cobalt" data-color="cobalt" title="Midnight Cobalt"></button>
         <button class="theme-swatch sunset" data-color="sunset" title="Sunset Crimson"></button>
         <button class="theme-swatch emerald" data-color="emerald" title="Emerald Forest"></button>
+        <button class="theme-swatch rose" data-color="rose" title="Neon Rose"></button>
+        <button class="theme-swatch amber" data-color="amber" title="Golden Amber"></button>
+        <button class="theme-swatch indigo" data-color="indigo" title="Cosmic Indigo"></button>
+      </div>
+    </div>
+
+    <!-- Sound & Feedback Settings -->
+    <div class="settings-card">
+      <div class="settings-card-row">
+        <div>
+          <p class="settings-title">🔊 المؤثرات الصوتية والاهتزاز</p>
+          <p class="settings-desc" id="sound-status-desc">تشغيل الأصوات عند التفاعل وإنجاز المهام</p>
+        </div>
+        <button class="chip-btn" id="toggle-sound-btn" style="margin:0;">مفعّل 🔊</button>
       </div>
     </div>
 
@@ -432,6 +449,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=11"></script>
+<script src="js/app.js?v=14"></script>
 </body>
 </html>

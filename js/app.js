@@ -10,6 +10,8 @@ const STREAK_KEY = 'taskflow_streak';
 const ALARM_KEY = 'taskflow_alarm_enabled';
 const STICKY_NOTIF_KEY = 'taskflow_sticky_enabled';
 const MEMOS_KEY = 'taskflow_voice_memos';
+const SOUND_KEY = 'taskflow_sound_enabled';
+const AUTO_THEME_KEY = 'taskflow_auto_theme';
 
 // Global State
 let tasks = [];
@@ -20,6 +22,8 @@ let isGridMode = false;
 let dbInstance = null;
 let alarmEnabled = false;
 let stickyEnabled = false;
+let soundEnabled = true;
+let isAutoTheme = false;
 
 // Timers State
 let pomoSeconds = 25 * 60;
@@ -279,6 +283,7 @@ function toggleAlarmPermission() {
 }
 
 function playAlarmRingtone() {
+  if (!soundEnabled) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const now = ctx.currentTime;
@@ -1203,6 +1208,7 @@ function showView(view) {
 }
 
 function playCompleteSound() {
+  if (!soundEnabled) return;
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     [523.25, 659.25, 783.99].forEach((freq, i) => {
@@ -1304,11 +1310,48 @@ function applyColorTheme(colorTheme) {
     purple: '#9333ea',
     cobalt: '#2563eb',
     sunset: '#ea580c',
-    emerald: '#059669'
+    emerald: '#059669',
+    rose: '#f43f5e',
+    amber: '#d97706',
+    indigo: '#4f46e5'
   };
   const themeMeta = document.querySelector('meta[name="theme-color"]');
   if (themeMeta && themeColors[colorTheme]) {
     themeMeta.setAttribute('content', themeColors[colorTheme]);
+  }
+}
+
+function updateSoundUI() {
+  const btn = document.getElementById('toggle-sound-btn');
+  const desc = document.getElementById('sound-status-desc');
+  if (btn) {
+    if (soundEnabled) {
+      btn.textContent = 'مفعّل 🔊';
+      btn.style.background = 'var(--primary)';
+      btn.style.color = '#ffffff';
+      if (desc) desc.textContent = 'المؤثرات الصوتية مفعّلة عند إنجاز المهام والمنبه 🔊';
+    } else {
+      btn.textContent = 'مكتوم 🔇';
+      btn.style.background = 'var(--surface-solid)';
+      btn.style.color = 'var(--text-muted)';
+      if (desc) desc.textContent = 'تم كتم جميع الأصوات والمؤثرات التفاعلية 🔇';
+    }
+  }
+}
+
+function updateAutoThemeUI() {
+  const btn = document.getElementById('auto-theme-btn');
+  const desc = document.getElementById('theme-mode-desc');
+  if (btn) {
+    if (isAutoTheme) {
+      btn.style.background = 'var(--primary)';
+      btn.style.color = '#ffffff';
+      if (desc) desc.textContent = 'تلقائي: يتكيف تلقائياً مع نظام التشغيل 💻';
+    } else {
+      btn.style.background = 'var(--surface-solid)';
+      btn.style.color = 'var(--text-muted)';
+      if (desc) desc.textContent = 'مُخصص: تبديل يدوي بين الوضع الفاتح والداكن';
+    }
   }
 }
 
@@ -1505,8 +1548,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // initStickyNotification: update sticky if already enabled
   if (stickyEnabled) updateStickyNotification();
 
-  const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
-  applyTheme(savedTheme);
+  soundEnabled = localStorage.getItem(SOUND_KEY) !== 'false';
+  isAutoTheme = localStorage.getItem(AUTO_THEME_KEY) === 'true';
+  updateSoundUI();
+  updateAutoThemeUI();
+
+  if (isAutoTheme) {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(prefersDark ? 'dark' : 'light');
+  } else {
+    const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+    applyTheme(savedTheme);
+  }
+
+  // Listen for system theme changes if auto theme is active
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (isAutoTheme) {
+      applyTheme(e.matches ? 'dark' : 'light');
+    }
+  });
 
   const savedColorTheme = localStorage.getItem(COLOR_THEME_KEY) || 'teal';
   applyColorTheme(savedColorTheme);
@@ -1572,11 +1632,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Theme Toggle
   const toggleThemeHandler = () => {
+    isAutoTheme = false;
+    localStorage.setItem(AUTO_THEME_KEY, 'false');
+    updateAutoThemeUI();
     const current = document.documentElement.getAttribute('data-theme');
     applyTheme(current === 'dark' ? 'light' : 'dark');
   };
   document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleThemeHandler);
   document.getElementById('settings-theme-btn')?.addEventListener('click', toggleThemeHandler);
+
+  // Auto Theme Toggle
+  document.getElementById('auto-theme-btn')?.addEventListener('click', () => {
+    isAutoTheme = !isAutoTheme;
+    localStorage.setItem(AUTO_THEME_KEY, isAutoTheme);
+    updateAutoThemeUI();
+    if (isAutoTheme) {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      applyTheme(prefersDark ? 'dark' : 'light');
+      showToast('💻 تم تفعيل المزامنة التلقائية مع النظام!', 'success');
+    } else {
+      showToast('🌙 تم تعطيل المزامنة التلقائية', 'info');
+    }
+  });
+
+  // Sound Toggle
+  document.getElementById('toggle-sound-btn')?.addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    localStorage.setItem(SOUND_KEY, soundEnabled);
+    updateSoundUI();
+    if (soundEnabled) {
+      playCompleteSound();
+      showToast('🔊 تم تفعيل الأصوات والمؤثرات!', 'success');
+    } else {
+      showToast('🔇 تم كتم الأصوات والمؤثرات', 'info');
+    }
+  });
 
   // Swatches
   document.querySelectorAll('.theme-swatch').forEach(swatch => {

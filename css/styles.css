@@ -155,6 +155,54 @@
   --shadow-md: 0 8px 24px rgba(5,150,105,0.15);
 }
 
+[data-color-theme="rose"][data-theme="light"],
+[data-color-theme="rose"]:not([data-theme="dark"]) {
+  --primary: #f43f5e;
+  --primary-hover: #e11d48;
+  --primary-light: rgba(244,63,94,0.10);
+  --primary-glow: rgba(244,63,94,0.30);
+  --secondary: #fb7185;
+  --border: rgba(244,63,94,0.18);
+  --border-focus: #f43f5e;
+  --bg-gradient: radial-gradient(ellipse at 20% 20%, #fff1f2 0%, #ffe4e6 40%, #fecdd3 80%, #fff5f5 100%);
+  --orb1: rgba(244,63,94,0.22);
+  --orb2: rgba(251,113,133,0.20);
+  --orb3: rgba(244,114,182,0.18);
+  --shadow-md: 0 8px 24px rgba(244,63,94,0.15);
+}
+
+[data-color-theme="amber"][data-theme="light"],
+[data-color-theme="amber"]:not([data-theme="dark"]) {
+  --primary: #d97706;
+  --primary-hover: #b45309;
+  --primary-light: rgba(217,119,6,0.10);
+  --primary-glow: rgba(217,119,6,0.30);
+  --secondary: #fbbf24;
+  --border: rgba(217,119,6,0.18);
+  --border-focus: #d97706;
+  --bg-gradient: radial-gradient(ellipse at 20% 20%, #fffbeb 0%, #fef3c7 40%, #fde68a 80%, #fffdf0 100%);
+  --orb1: rgba(217,119,6,0.22);
+  --orb2: rgba(251,191,36,0.20);
+  --orb3: rgba(245,158,11,0.18);
+  --shadow-md: 0 8px 24px rgba(217,119,6,0.15);
+}
+
+[data-color-theme="indigo"][data-theme="light"],
+[data-color-theme="indigo"]:not([data-theme="dark"]) {
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-light: rgba(79,70,229,0.10);
+  --primary-glow: rgba(79,70,229,0.30);
+  --secondary: #818cf8;
+  --border: rgba(79,70,229,0.18);
+  --border-focus: #4f46e5;
+  --bg-gradient: radial-gradient(ellipse at 20% 20%, #eef2ff 0%, #e0e7ff 40%, #c7d2fe 80%, #f5f7ff 100%);
+  --orb1: rgba(79,70,229,0.22);
+  --orb2: rgba(129,140,248,0.20);
+  --orb3: rgba(99,102,241,0.18);
+  --shadow-md: 0 8px 24px rgba(79,70,229,0.15);
+}
+
 /* ═══════════════════════════════════════
    DARK COLOR THEMES
    ═══════════════════════════════════════ */
@@ -228,6 +276,60 @@
   --orb2: rgba(16,185,129,0.25);
   --orb3: rgba(6,182,212,0.20);
   --shadow-md: 0 10px 32px rgba(52,211,153,0.25);
+}
+
+[data-color-theme="rose"][data-theme="dark"] {
+  --primary: #fb7185;
+  --primary-hover: #f43f5e;
+  --primary-light: rgba(251,113,133,0.16);
+  --primary-glow: rgba(251,113,133,0.50);
+  --secondary: #e11d48;
+  --border: rgba(251,113,133,0.22);
+  --border-focus: #fb7185;
+  --bg-gradient: radial-gradient(ellipse at 20% 20%, #2a0812 0%, #1c050b 50%, #1f0207 100%);
+  --bg-main: #140307;
+  --surface-solid: #260913;
+  --surface-hover: #3d0e1f;
+  --orb1: rgba(251,113,133,0.30);
+  --orb2: rgba(244,63,94,0.25);
+  --orb3: rgba(225,29,72,0.20);
+  --shadow-md: 0 10px 32px rgba(251,113,133,0.25);
+}
+
+[data-color-theme="amber"][data-theme="dark"] {
+  --primary: #fbbf24;
+  --primary-hover: #f59e0b;
+  --primary-light: rgba(251,191,36,0.16);
+  --primary-glow: rgba(251,191,36,0.50);
+  --secondary: #d97706;
+  --border: rgba(251,191,36,0.22);
+  --border-focus: #fbbf24;
+  --bg-gradient: radial-gradient(ellipse at 20% 20%, #271704 0%, #1a0f02 50%, #1c0f00 100%);
+  --bg-main: #120a01;
+  --surface-solid: #241403;
+  --surface-hover: #3a2105;
+  --orb1: rgba(251,191,36,0.30);
+  --orb2: rgba(245,158,11,0.25);
+  --orb3: rgba(217,119,6,0.20);
+  --shadow-md: 0 10px 32px rgba(251,191,36,0.25);
+}
+
+[data-color-theme="indigo"][data-theme="dark"] {
+  --primary: #818cf8;
+  --primary-hover: #6366f1;
+  --primary-light: rgba(129,140,248,0.16);
+  --primary-glow: rgba(129,140,248,0.50);
+  --secondary: #4f46e5;
+  --border: rgba(129,140,248,0.22);
+  --border-focus: #818cf8;
+  --bg-gradient: radial-gradient(ellipse at 20% 20%, #0c0e2b 0%, #07081e 50%, #070624 100%);
+  --bg-main: #050614;
+  --surface-solid: #0f1236;
+  --surface-hover: #191e56;
+  --orb1: rgba(129,140,248,0.30);
+  --orb2: rgba(99,102,241,0.25);
+  --orb3: rgba(79,70,229,0.20);
+  --shadow-md: 0 10px 32px rgba(129,140,248,0.25);
 }
 
 /* ═══════════════════════════════════════
@@ -934,11 +1036,11 @@ body { display: flex; justify-content: flex-start; align-items: flex-start; }
    THEME SWATCHES  – with live glow
    ═══════════════════════════════════════ */
 .theme-swatches-grid {
-  display: grid; grid-template-columns: repeat(5,1fr); gap: 10px;
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 10px;
 }
 
 .theme-swatch {
-  height: 50px; border-radius: var(--radius-md);
+  height: 48px; border-radius: var(--radius-md);
   border: 2.5px solid transparent; cursor: pointer;
   transition: var(--spring); box-shadow: var(--shadow-sm);
   position: relative; overflow: hidden;
@@ -964,6 +1066,9 @@ body { display: flex; justify-content: flex-start; align-items: flex-start; }
 .theme-swatch.cobalt  { background: linear-gradient(145deg, #2563eb, #60a5fa, #3b82f6); }
 .theme-swatch.sunset  { background: linear-gradient(145deg, #ea580c, #fb923c, #f97316); }
 .theme-swatch.emerald { background: linear-gradient(145deg, #059669, #34d399, #10b981); }
+.theme-swatch.rose    { background: linear-gradient(145deg, #f43f5e, #fb7185, #e11d48); }
+.theme-swatch.amber   { background: linear-gradient(145deg, #d97706, #fbbf24, #b45309); }
+.theme-swatch.indigo  { background: linear-gradient(145deg, #4f46e5, #818cf8, #3730a3); }
 
 /* swatch shimmer */
 .theme-swatch::before {
