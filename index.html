@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="dark">
+<html lang="ar" dir="rtl" data-theme="dark" data-color-theme="teal">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -57,9 +57,9 @@
         <div style="font-size:1.1rem;font-weight:800;" id="today-summary">0 / 0</div>
       </div>
       <div class="progress-ring-container">
-        <svg class="progress-ring" viewBox="0 0 54 54">
-          <circle class="bg-circle" cx="27" cy="27" r="22"/>
-          <circle class="progress-circle" id="progress-circle" cx="27" cy="27" r="22"/>
+        <svg class="progress-ring" viewBox="0 0 58 58">
+          <circle class="bg-circle" cx="29" cy="29" r="23"/>
+          <circle class="progress-circle" id="progress-circle" cx="29" cy="29" r="23"/>
         </svg>
         <span class="progress-value" id="progress-value">0%</span>
       </div>
@@ -98,6 +98,49 @@
     </div>
 
   </main>
+
+  <!-- STATS VIEW (hidden panel) -->
+  <div id="stats-view" style="display:none;padding:18px 20px;">
+    <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:16px;color:var(--text-main);">📊 إحصائيات الأداء</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="stats-grid"></div>
+    <div style="margin-top:22px;" id="category-breakdown"></div>
+  </div>
+
+  <!-- SETTINGS VIEW (hidden panel) -->
+  <div id="settings-view" style="display:none;padding:18px 20px;">
+    <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:18px;color:var(--text-main);">⚙️ الإعدادات والثيمات</h2>
+    
+    <!-- Theme Palette Selector -->
+    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
+      <p style="font-size:0.9rem;font-weight:700;margin-bottom:4px;color:var(--text-main);">🎨 ثيم الألوان المفضّل</p>
+      <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:12px;">اختر اللون المفضل لتطبيقك</p>
+      <div class="theme-swatches-grid">
+        <button class="theme-swatch teal active" data-color="teal" title="Teal Breeze" aria-label="تركوازي"></button>
+        <button class="theme-swatch purple" data-color="purple" title="Cyber Purple" aria-label="بنفسجي"></button>
+        <button class="theme-swatch cobalt" data-color="cobalt" title="Midnight Cobalt" aria-label="أزرق"></button>
+        <button class="theme-swatch sunset" data-color="sunset" title="Sunset Crimson" aria-label="برتقالي"></button>
+        <button class="theme-swatch emerald" data-color="emerald" title="Emerald Forest" aria-label="زمردي"></button>
+      </div>
+    </div>
+
+    <!-- Mode Toggle Option -->
+    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow-sm);">
+      <div>
+        <p style="font-size:0.9rem;font-weight:700;color:var(--text-main);">🌙 الوضع الليلي / الفاتح</p>
+        <p style="font-size:0.78rem;color:var(--text-muted);">تبديل بين الداكن والفاتح</p>
+      </div>
+      <button class="chip-btn" id="settings-theme-btn" style="margin:0;">تبديل 🌗</button>
+    </div>
+
+    <!-- Data Management -->
+    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);">
+      <p style="font-size:0.9rem;font-weight:700;margin-bottom:12px;color:var(--text-main);">💾 النسخ الاحتياطي والبيانات</p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button id="export-data-btn" class="chip-btn" style="justify-content:center;padding:12px;">📥 تصدير نسختك الاحتياطية (JSON)</button>
+        <button id="clear-completed-btn" class="chip-btn" style="justify-content:center;padding:12px;color:var(--danger);border-color:var(--danger-light);">🧹 مسح المهام المكتملة</button>
+      </div>
+    </div>
+  </div>
 
   <!-- FAB Add Task Button -->
   <button class="fab-btn" id="fab-btn" aria-label="إضافة مهمة جديدة">
@@ -223,13 +266,6 @@
     </div>
     <div id="detail-content"></div>
   </div>
-</div>
-
-<!-- ========== STATS VIEW (hidden panel) ========== -->
-<div id="stats-view" style="display:none;padding:16px 20px;">
-  <h2 style="font-size:1.1rem;font-weight:800;margin-bottom:16px;color:var(--text-main);">📊 إحصائياتك</h2>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="stats-grid"></div>
-  <div style="margin-top:20px;" id="category-breakdown"></div>
 </div>
 
 <script src="js/app.js"></script>

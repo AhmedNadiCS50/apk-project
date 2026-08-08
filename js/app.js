@@ -4,6 +4,7 @@
 
 const DB_KEY = 'taskflow_data';
 const THEME_KEY = 'taskflow_theme';
+const COLOR_THEME_KEY = 'taskflow_color_theme';
 const STREAK_KEY = 'taskflow_streak';
 
 // =============================================
@@ -102,7 +103,7 @@ function updateProgressUI() {
   document.getElementById('progress-value').textContent = `${pct}%`;
 
   const circle = document.getElementById('progress-circle');
-  const circumference = 2 * Math.PI * 22; // r=22
+  const circumference = 2 * Math.PI * 23; // r=23
   const offset = circumference * (1 - pct / 100);
   circle.style.strokeDasharray = circumference;
   circle.style.strokeDashoffset = offset;
@@ -134,15 +135,18 @@ const priorityMap = {
 function getFilteredTasks() {
   return tasks.filter(task => {
     const matchCat = currentFilter.category === 'all' || task.category === currentFilter.category;
-    const matchStatus =
-      currentFilter.status === 'all' ||
-      (currentFilter.status === 'completed' && task.completed) ||
-      (currentFilter.status === 'pending' && !task.completed);
+    let matchStatus = true;
+    if (currentFilter.status === 'completed') matchStatus = task.completed;
+    else if (currentFilter.status === 'pending') matchStatus = !task.completed;
+    
+    if (activeView === 'today') {
+      matchStatus = matchStatus && isToday(task.createdAt);
+    }
+
     const q = currentFilter.search.trim().toLowerCase();
     const matchSearch = !q || task.title.toLowerCase().includes(q) || (task.description || '').toLowerCase().includes(q);
     return matchCat && matchStatus && matchSearch;
   }).sort((a, b) => {
-    // Sort by: uncompleted first, then priority, then date
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
     const pOrder = { high: 0, medium: 1, low: 2 };
     if (pOrder[a.priority] !== pOrder[b.priority]) return pOrder[a.priority] - pOrder[b.priority];
@@ -158,7 +162,7 @@ function renderTasks() {
     list.innerHTML = `
       <div class="empty-state">
         <span class="empty-icon">📋</span>
-        <h3>لا توجد مهام</h3>
+        <h3>لا توجد مهام ${activeView === 'today' ? 'اليوم' : ''}</h3>
         <p>اضغط على زر + لإضافة مهمة جديدة</p>
       </div>`;
     return;
@@ -178,9 +182,6 @@ function renderTasks() {
   });
   list.querySelectorAll('.task-detail-btn').forEach(btn => {
     btn.addEventListener('click', () => openDetailModal(btn.dataset.id));
-  });
-  list.querySelectorAll('.subtask-check').forEach(cb => {
-    cb.addEventListener('change', () => toggleSubtask(cb.dataset.taskId, cb.dataset.subIdx));
   });
 
   updateProgressUI();
@@ -213,7 +214,7 @@ function createTaskCard(task) {
     <div class="task-card ${task.completed ? 'completed' : ''}" id="task-${task.id}">
       <div class="task-header">
         <div class="custom-checkbox ${task.completed ? 'checked' : ''}" data-id="${task.id}" role="checkbox" aria-checked="${task.completed}" tabindex="0">
-          ${task.completed ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+          ${task.completed ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
         </div>
         <div class="task-body">
           <div class="task-title">${escapeHtml(task.title)}</div>
@@ -263,6 +264,7 @@ function toggleTask(id) {
   task.completed = !task.completed;
   if (task.completed) {
     playCompleteSound();
+    if (navigator.vibrate) navigator.vibrate([30, 20, 30]);
     showToast('✅ مهمة مكتملة! عمل رائع!', 'success');
     checkAllDone();
   }
@@ -458,7 +460,6 @@ function renderStats() {
   const total = tasks.length;
   const completed = tasks.filter(t => t.completed).length;
   const pending = total - completed;
-  const todayTasks = tasks.filter(t => isToday(t.createdAt));
   const streak = getStreakData().days;
 
   const statsEl = document.getElementById('stats-grid');
@@ -468,10 +469,10 @@ function renderStats() {
     { label: 'قيد التنفيذ', value: pending, icon: '⏳', color: 'var(--warning)' },
     { label: 'سلسلة الإنجاز', value: `${streak} 🔥`, icon: '🔥', color: 'var(--accent)' },
   ].map(s => `
-    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;text-align:center;box-shadow:var(--shadow-sm)">
-      <div style="font-size:1.8rem;margin-bottom:6px">${s.icon}</div>
-      <div style="font-size:1.4rem;font-weight:800;color:${s.color};margin-bottom:4px">${s.value}</div>
-      <div style="font-size:0.78rem;color:var(--text-muted);font-weight:600">${s.label}</div>
+    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;text-align:center;box-shadow:var(--shadow-sm)">
+      <div style="font-size:2rem;margin-bottom:6px">${s.icon}</div>
+      <div style="font-size:1.5rem;font-weight:800;color:${s.color};margin-bottom:4px">${s.value}</div>
+      <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600">${s.label}</div>
     </div>`).join('');
 
   // Category Breakdown
@@ -479,15 +480,15 @@ function renderStats() {
   const catCounts = {};
   tasks.forEach(t => { catCounts[t.category] = (catCounts[t.category] || 0) + 1; });
   catBreakdown.innerHTML = `
-    <p style="font-size:0.82rem;font-weight:700;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.05em">التوزيع حسب التصنيف</p>
+    <p style="font-size:0.85rem;font-weight:700;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.05em">التوزيع حسب التصنيف</p>
     ${Object.entries(catCounts).map(([cat, count]) => {
       const c = categoryMap[cat] || { label: cat, icon: '📌' };
       const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-      return `<div style="margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:4px">
+      return `<div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;font-size:0.88rem;margin-bottom:6px">
           <span>${c.icon} ${c.label}</span><span style="font-weight:700">${count} (${pct}%)</span>
         </div>
-        <div style="height:6px;background:var(--surface-hover);border-radius:999px;overflow:hidden">
+        <div style="height:7px;background:var(--surface-hover);border-radius:999px;overflow:hidden">
           <div style="height:100%;width:${pct}%;background:var(--primary);transition:width 0.5s ease;border-radius:999px"></div>
         </div>
       </div>`;
@@ -501,16 +502,22 @@ function showView(view) {
   activeView = view;
   const mainContent = document.querySelector('.app-content');
   const statsView = document.getElementById('stats-view');
+  const settingsView = document.getElementById('settings-view');
   const fab = document.getElementById('fab-btn');
 
+  mainContent.style.display = 'none';
+  statsView.style.display = 'none';
+  settingsView.style.display = 'none';
+
   if (view === 'stats') {
-    mainContent.style.display = 'none';
     statsView.style.display = 'block';
     fab.style.display = 'none';
     renderStats();
+  } else if (view === 'settings') {
+    settingsView.style.display = 'block';
+    fab.style.display = 'none';
   } else {
     mainContent.style.display = 'block';
-    statsView.style.display = 'none';
     fab.style.display = 'flex';
     renderTasks();
   }
@@ -553,7 +560,7 @@ function launchConfetti() {
     vx: (Math.random() - 0.5) * 4,
     vy: Math.random() * 5 + 2,
     size: Math.random() * 9 + 4,
-    color: ['#0d9488', '#14b8a6', '#ea580c', '#f59e0b', '#10b981', '#6366f1', '#ec4899'][Math.floor(Math.random() * 7)],
+    color: ['#0d9488', '#2dd4bf', '#a855f7', '#fb923c', '#10b981', '#3b82f6', '#ec4899'][Math.floor(Math.random() * 7)],
     rot: Math.random() * 360,
     rotV: (Math.random() - 0.5) * 6,
   }));
@@ -601,7 +608,7 @@ function showToast(msg, type = 'info') {
 }
 
 // =============================================
-//  Theme Toggle
+//  Theme & Color Theme Switching
 // =============================================
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
@@ -614,32 +621,93 @@ function applyTheme(theme) {
   }
 }
 
+function applyColorTheme(colorTheme) {
+  document.documentElement.setAttribute('data-color-theme', colorTheme);
+  localStorage.setItem(COLOR_THEME_KEY, colorTheme);
+
+  document.querySelectorAll('.theme-swatch').forEach(swatch => {
+    swatch.classList.toggle('active', swatch.dataset.color === colorTheme);
+  });
+
+  const themeColors = {
+    teal: '#0d9488',
+    purple: '#9333ea',
+    cobalt: '#2563eb',
+    sunset: '#ea580c',
+    emerald: '#059669'
+  };
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (themeMeta && themeColors[colorTheme]) {
+    themeMeta.setAttribute('content', themeColors[colorTheme]);
+  }
+}
+
+// =============================================
+//  Export & Clear Tasks
+// =============================================
+function exportData() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tasks, null, 2));
+  const dlAnchor = document.createElement('a');
+  dlAnchor.setAttribute("href", dataStr);
+  dlAnchor.setAttribute("download", `TaskFlow_Backup_${new Date().toISOString().slice(0, 10)}.json`);
+  document.body.appendChild(dlAnchor);
+  dlAnchor.click();
+  dlAnchor.remove();
+  showToast('📥 تم تصدير بياناتك بنجاح!', 'success');
+}
+
+function clearCompletedTasks() {
+  const completedCount = tasks.filter(t => t.completed).length;
+  if (completedCount === 0) {
+    showToast('لا توجد مهام مكتملة لمسحها', 'info');
+    return;
+  }
+  if (!confirm(`هل أنت متأكد من مسح ${completedCount} مهمة مكتملة؟`)) return;
+  tasks = tasks.filter(t => !t.completed);
+  saveData();
+  renderTasks();
+  showToast('🧹 تم مسح المهام المكتملة', 'info');
+}
+
 // =============================================
 //  Event Listeners
 // =============================================
 document.addEventListener('DOMContentLoaded', () => {
-  // Load data
   loadData();
 
-  // Apply saved theme
   const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
   applyTheme(savedTheme);
 
-  // Greeting & Date
+  const savedColorTheme = localStorage.getItem(COLOR_THEME_KEY) || 'teal';
+  applyColorTheme(savedColorTheme);
+
   updateGreeting();
 
-  // Initial render
   renderTasks();
   updateProgressUI();
 
   // FAB – Add Task
   document.getElementById('fab-btn').addEventListener('click', openAddModal);
 
-  // Theme Toggle
-  document.getElementById('theme-toggle-btn').addEventListener('click', () => {
+  // Theme Toggle (Header & Settings)
+  const toggleThemeHandler = () => {
     const current = document.documentElement.getAttribute('data-theme');
     applyTheme(current === 'dark' ? 'light' : 'dark');
+  };
+  document.getElementById('theme-toggle-btn').addEventListener('click', toggleThemeHandler);
+  document.getElementById('settings-theme-btn')?.addEventListener('click', toggleThemeHandler);
+
+  // Color Theme Swatches
+  document.querySelectorAll('.theme-swatch').forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      applyColorTheme(swatch.dataset.color);
+      showToast('🎨 تم تغيير ثيم الألوان!', 'info');
+    });
   });
+
+  // Export & Clear Completed Data
+  document.getElementById('export-data-btn')?.addEventListener('click', exportData);
+  document.getElementById('clear-completed-btn')?.addEventListener('click', clearCompletedTasks);
 
   // Search Toggle
   const searchBox = document.getElementById('search-box');
