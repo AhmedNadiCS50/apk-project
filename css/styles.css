@@ -1788,3 +1788,289 @@ body { display: flex; justify-content: flex-start; align-items: flex-start; }
   margin-bottom: 18px;
 }
 
+/* ═══════════════════════════════════════════════════
+   RESPONSIVE MOBILE OVERHAUL — FULL FIX
+   ═══════════════════════════════════════════════════ */
+
+/* ── Fluid base font: never below 14px on tiny screens ── */
+html {
+  font-size: clamp(14px, 3.8vw, 16px);
+}
+
+/* ── App shell: always full viewport, no overflow ── */
+.app-container {
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 8px));
+  overflow-x: hidden;
+}
+
+/* ── Header: tighter on very small phones ── */
+@media (max-width: 380px) {
+  .app-header {
+    padding: 12px 14px 10px;
+  }
+  .user-welcome h1 {
+    font-size: clamp(1rem, 5vw, 1.25rem);
+  }
+  .user-welcome p {
+    font-size: 0.72rem;
+  }
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .header-actions {
+    gap: 5px;
+  }
+}
+
+/* ── Dashboard section ── */
+@media (max-width: 420px) {
+  .dashboard-section {
+    padding: 14px 12px 0;
+    gap: 12px;
+  }
+
+  /* Stat cards: shrink padding, allow text to breathe */
+  .stat-cards-row {
+    gap: 8px;
+  }
+  .stat-card {
+    padding: 12px 6px;
+    border-radius: 14px;
+  }
+  .stat-icon {
+    font-size: 1.2rem;
+  }
+  .stat-value {
+    font-size: 1.1rem;
+  }
+  .stat-label {
+    font-size: 0.6rem;
+  }
+  .stat-sub {
+    font-size: 0.58rem;
+  }
+  .stat-progress-ring svg,
+  .stat-progress-ring {
+    width: 42px;
+    height: 42px;
+  }
+  .stat-ring-val {
+    font-size: 0.6rem;
+  }
+
+  /* Pomodoro + info side */
+  .dual-row {
+    gap: 8px;
+  }
+  .pomo-card {
+    padding: 12px 10px;
+    min-width: 96px;
+  }
+  .pomo-timer-txt {
+    font-size: 1.15rem;
+    letter-spacing: 1px;
+  }
+  .pomo-label {
+    font-size: 0.62rem;
+  }
+  .info-side-card {
+    padding: 12px;
+  }
+  .quote-txt {
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+  .pending-chip strong {
+    font-size: 0.95rem;
+  }
+  .pending-chip span {
+    font-size: 0.6rem;
+  }
+
+  /* Template chips */
+  .templates-row {
+    gap: 7px;
+  }
+  .template-chip {
+    padding: 7px 11px;
+    font-size: 0.74rem;
+  }
+}
+
+/* ── Tasks section ── */
+@media (max-width: 420px) {
+  .tasks-section {
+    padding: 14px 12px 20px;
+    gap: 10px;
+  }
+
+  .chip-btn {
+    padding: 7px 13px;
+    font-size: 0.77rem;
+  }
+
+  .task-card {
+    padding: 13px 12px 13px 14px;
+    border-radius: 14px;
+  }
+  .task-title {
+    font-size: 0.88rem;
+  }
+  .task-description {
+    font-size: 0.74rem;
+  }
+  .tag-badge {
+    font-size: 0.65rem;
+    padding: 2px 7px;
+  }
+  .due-time {
+    font-size: 0.67rem;
+  }
+  .custom-checkbox {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    font-size: 0.75rem;
+  }
+}
+
+/* ── Settings ── */
+@media (max-width: 420px) {
+  .settings-card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .settings-title {
+    font-size: 0.85rem;
+  }
+  .settings-desc {
+    font-size: 0.72rem;
+  }
+  #settings-view,
+  #stats-view,
+  #calendar-view {
+    padding: 16px 14px 110px;
+  }
+}
+
+/* ── Calendar view ── */
+@media (max-width: 420px) {
+  .cal-day {
+    min-height: 38px;
+    padding: 6px 1px 4px;
+    border-radius: 10px;
+  }
+  .cal-day-num {
+    font-size: 0.74rem;
+  }
+  .cal-dot {
+    width: 4px;
+    height: 4px;
+  }
+  #cal-monthly-overview {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  #cal-monthly-overview span {
+    font-size: 0.75rem;
+  }
+  #cal-month-progress-bar {
+    min-width: 60px;
+  }
+  .cal-filter-tab {
+    padding: 5px 11px;
+    font-size: 0.74rem;
+  }
+  .calendar-card {
+    padding: 12px;
+    border-radius: 14px;
+  }
+  .calendar-weekdays span {
+    font-size: 0.65rem;
+  }
+}
+
+/* ── Bottom nav: safe area + min touch targets ── */
+.bottom-nav {
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.nav-item {
+  min-width: 44px;
+  min-height: 44px;
+}
+@media (max-width: 380px) {
+  .nav-item span {
+    font-size: 0.6rem;
+  }
+  .nav-item svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ── FAB: keep touchable ── */
+@media (max-width: 380px) {
+  .fab-btn {
+    width: 52px;
+    height: 52px;
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ── Modal: full width on mobile ── */
+@media (max-width: 480px) {
+  .modal-sheet {
+    border-radius: 20px 20px 0 0;
+    padding: 20px 16px 30px;
+  }
+  .modal-header h2 {
+    font-size: 1.05rem;
+  }
+  .form-control {
+    font-size: 0.88rem;
+    padding: 11px 14px;
+  }
+  .form-group label {
+    font-size: 0.78rem;
+  }
+}
+
+/* ── Voice memo widget ── */
+@media (max-width: 420px) {
+  .voice-memo-widget {
+    padding: 12px 14px;
+    border-radius: 14px;
+  }
+}
+
+/* ── Turn off heavy animations on low-end phones ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Extra small phones (iPhone SE, Galaxy A) ── */
+@media (max-width: 360px) {
+  html { font-size: 13px; }
+  .stat-cards-row {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+  }
+  .stat-card {
+    padding: 10px 4px;
+  }
+  .stat-value {
+    font-size: 1rem;
+  }
+  .pomo-card {
+    min-width: 84px;
+  }
+  .pomo-timer-txt {
+    font-size: 1rem;
+  }
+}
+
