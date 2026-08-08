@@ -5,6 +5,7 @@
 const DB_KEY = 'taskflow_data';
 const THEME_KEY = 'taskflow_theme';
 const COLOR_THEME_KEY = 'taskflow_color_theme';
+const LAYOUT_MODE_KEY = 'taskflow_layout_mode';
 const STREAK_KEY = 'taskflow_streak';
 
 // =============================================
@@ -14,6 +15,7 @@ let tasks = [];
 let currentFilter = { category: 'all', status: 'all', search: '' };
 let editingTaskId = null;
 let activeView = 'tasks';
+let isGridMode = false;
 
 // =============================================
 //  Data Persistence
@@ -90,7 +92,7 @@ function updateGreeting() {
 }
 
 // =============================================
-//  Progress Ring Update
+//  Progress Ring & Dashboard Stats
 // =============================================
 function updateProgressUI() {
   const todayAll = tasks.filter(t => isToday(t.createdAt));
@@ -103,13 +105,24 @@ function updateProgressUI() {
   document.getElementById('progress-value').textContent = `${pct}%`;
 
   const circle = document.getElementById('progress-circle');
-  const circumference = 2 * Math.PI * 23; // r=23
-  const offset = circumference * (1 - pct / 100);
-  circle.style.strokeDasharray = circumference;
-  circle.style.strokeDashoffset = offset;
+  if (circle) {
+    const circumference = 2 * Math.PI * 21; // r=21
+    const offset = circumference * (1 - pct / 100);
+    circle.style.strokeDasharray = circumference;
+    circle.style.strokeDashoffset = offset;
+  }
 
   const streak = updateStreak();
   document.getElementById('streak-count').textContent = `${streak} ${streak === 1 ? 'يوم' : 'أيام'}`;
+
+  // Quick summary chips
+  const pendingCount = tasks.filter(t => !t.completed).length;
+  const completedCount = tasks.filter(t => t.completed).length;
+  const urgentCount = tasks.filter(t => !t.completed && t.priority === 'high').length;
+
+  document.getElementById('pending-chip-count').textContent = pendingCount;
+  document.getElementById('completed-chip-count').textContent = completedCount;
+  document.getElementById('urgent-chip-count').textContent = urgentCount;
 }
 
 // =============================================
@@ -157,6 +170,8 @@ function getFilteredTasks() {
 function renderTasks() {
   const list = document.getElementById('tasks-list');
   const filtered = getFilteredTasks();
+
+  list.classList.toggle('grid-mode', isGridMode);
 
   if (filtered.length === 0) {
     list.innerHTML = `
@@ -369,7 +384,6 @@ function openEditModal(id) {
   document.getElementById('task-title-input').value = task.title;
   document.getElementById('task-desc-input').value = task.description || '';
   document.getElementById('task-date-input').value = task.dueDate || '';
-  document.getElementById('task-time-input').value = task.dueTime || '';
   document.getElementById('task-category-input').value = task.category;
   document.querySelector(`input[name="priority"][value="${task.priority}"]`).checked = true;
 
@@ -426,7 +440,7 @@ function openDetailModal(id) {
         <span class="tag-badge category">${cat.icon} ${cat.label}</span>
         <span class="tag-badge category">${task.completed ? '✅ مكتملة' : '⏳ قيد التنفيذ'}</span>
       </div>
-      ${task.dueDate ? `<p style="font-size:0.82rem;color:var(--text-muted)">📅 الموعد: ${formatDue(task.dueDate, task.dueTime)}</p>` : ''}
+      ${task.dueDate ? `<p style="font-size:0.82rem;color:var(--text-muted)">📅 الموعد: ${formatDue(task.dueDate)}</p>` : ''}
       <p style="font-size:0.78rem;color:var(--text-muted);margin-top:6px">🕐 أُنشئت: ${new Date(task.createdAt).toLocaleDateString('ar-EG', { weekday:'long', year:'numeric', month:'long', day:'numeric'})}</p>
       ${subtasksHtml}
       <div style="display:flex;gap:8px;margin-top:20px">
@@ -681,10 +695,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedColorTheme = localStorage.getItem(COLOR_THEME_KEY) || 'teal';
   applyColorTheme(savedColorTheme);
 
+  isGridMode = localStorage.getItem(LAYOUT_MODE_KEY) === 'true';
+
   updateGreeting();
 
   renderTasks();
   updateProgressUI();
+
+  // Layout Toggle Button
+  const layoutBtn = document.getElementById('layout-toggle-btn');
+  if (layoutBtn) {
+    layoutBtn.classList.toggle('active', isGridMode);
+    layoutBtn.addEventListener('click', () => {
+      isGridMode = !isGridMode;
+      localStorage.setItem(LAYOUT_MODE_KEY, isGridMode);
+      layoutBtn.classList.toggle('active', isGridMode);
+      renderTasks();
+      showToast(isGridMode ? '📊 تم التبديل لعرّض الشبكة' : '📋 تم التبديل لعرّض القائمة', 'info');
+    });
+  }
 
   // FAB – Add Task
   document.getElementById('fab-btn').addEventListener('click', openAddModal);
@@ -792,7 +821,6 @@ document.addEventListener('DOMContentLoaded', () => {
       category: document.getElementById('task-category-input').value,
       priority: document.querySelector('input[name="priority"]:checked')?.value || 'medium',
       dueDate: document.getElementById('task-date-input').value,
-      dueTime: document.getElementById('task-time-input').value,
       subtasks: Array.from(document.querySelectorAll('.subtask-input')).map(i => ({ text: i.value })),
     };
 

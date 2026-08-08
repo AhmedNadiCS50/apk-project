@@ -259,7 +259,7 @@ body {
 /* Mobile Container Wrapper - Dynamic Resolution */
 .app-container {
   width: 100%;
-  max-width: 480px;
+  max-width: 520px;
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg-main);
@@ -271,7 +271,7 @@ body {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-@media (min-width: 520px) {
+@media (min-width: 540px) {
   body {
     padding: 24px 0;
   }
@@ -355,11 +355,18 @@ body {
   transform: scale(0.92);
 }
 
-/* Habit Streak & Progress Banner */
-.stats-banner {
+/* Dual Grid Dashboard Banner */
+.dashboard-widgets-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.widget-card {
   background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   border-radius: var(--radius-md);
-  padding: 18px 20px;
+  padding: 16px;
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -370,26 +377,18 @@ body {
   transition: var(--transition-smooth);
 }
 
-.stats-banner::before {
-  content: '';
-  position: absolute;
-  top: -30px;
-  right: -30px;
-  width: 120px;
-  height: 120px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, transparent 70%);
-  border-radius: 50%;
-  pointer-events: none;
+.widget-card.streak-widget {
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
 }
 
 .streak-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .streak-flame {
-  font-size: 2.2rem;
+  font-size: 2rem;
   animation: pulseFlame 2.2s infinite ease-in-out;
 }
 
@@ -406,23 +405,23 @@ body {
 
 .streak-text span {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   opacity: 0.9;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   font-weight: 600;
 }
 
 .streak-text strong {
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 800;
 }
 
 /* Circular Progress Ring */
 .progress-ring-container {
   position: relative;
-  width: 58px;
-  height: 58px;
+  width: 52px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -430,8 +429,8 @@ body {
 
 .progress-ring svg {
   transform: rotate(-90deg);
-  width: 58px;
-  height: 58px;
+  width: 52px;
+  height: 52px;
 }
 
 .progress-ring circle {
@@ -454,9 +453,48 @@ body {
 
 .progress-value {
   position: absolute;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 800;
   color: #ffffff;
+}
+
+/* Summary Quick Chips Row */
+.summary-chips-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.summary-chip-card {
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition: var(--spring-bounce);
+}
+
+.summary-chip-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+}
+
+.summary-chip-card span {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.summary-chip-card strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-main);
 }
 
 /* App Main Content */
@@ -546,26 +584,34 @@ body {
   transform: scale(0.95);
 }
 
-/* Status Tabs */
+/* Status Tabs & Layout Switcher Header */
+.status-bar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
 .status-tabs {
+  flex: 1;
   display: flex;
   background: var(--surface-solid);
   padding: 5px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
-  margin-bottom: 18px;
   box-shadow: var(--shadow-sm);
 }
 
 .tab-btn {
   flex: 1;
-  padding: 11px 0;
+  padding: 10px 0;
   text-align: center;
   border: none;
   background: transparent;
   color: var(--text-muted);
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: var(--spring-bounce);
@@ -578,10 +624,37 @@ body {
   box-shadow: 0 2px 10px var(--primary-light);
 }
 
-/* Task List */
+.view-toggle-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--spring-bounce);
+  flex-shrink: 0;
+}
+
+.view-toggle-btn.active, .view-toggle-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+/* Tasks List Grid/List Dynamic Modes */
 .tasks-list {
   display: flex;
   flex-direction: column;
+  gap: 14px;
+}
+
+.tasks-list.grid-mode {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 14px;
 }
 
@@ -590,6 +663,7 @@ body {
   padding: 50px 20px;
   color: var(--text-muted);
   animation: fadeIn 0.4s ease;
+  grid-column: 1 / -1;
 }
 
 .empty-icon {
@@ -611,7 +685,7 @@ body {
   font-weight: 700;
 }
 
-/* Single Task Card - Micro-animations */
+/* Single Task Card - Structured Grid Layout */
 .task-card {
   background: var(--surface-solid);
   border: 1px solid var(--border);
@@ -855,7 +929,7 @@ body {
 .fab-btn {
   position: fixed;
   bottom: calc(92px + env(safe-area-inset-bottom, 0px));
-  left: calc(50% - 215px);
+  left: calc(50% - 235px);
   width: 60px;
   height: 60px;
   border-radius: var(--radius-full);
@@ -871,7 +945,7 @@ body {
   z-index: 45;
 }
 
-@media (max-width: 520px) {
+@media (max-width: 540px) {
   .fab-btn {
     left: 24px;
   }
@@ -889,7 +963,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 480px;
+  max-width: 520px;
   height: calc(72px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--surface);
@@ -904,7 +978,7 @@ body {
   padding-right: 10px;
 }
 
-@media (min-width: 520px) {
+@media (min-width: 540px) {
   .bottom-nav {
     border-bottom-left-radius: var(--radius-lg);
     border-bottom-right-radius: var(--radius-lg);
@@ -965,7 +1039,7 @@ body {
 
 .modal-card {
   width: 100%;
-  max-width: 480px;
+  max-width: 520px;
   background: var(--bg-main);
   border-top-left-radius: var(--radius-lg);
   border-top-right-radius: var(--radius-lg);

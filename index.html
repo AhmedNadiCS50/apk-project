@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="css/styles.css?v=2" />
+  <link rel="stylesheet" href="css/styles.css?v=3" />
 </head>
 <body>
 
@@ -43,25 +43,45 @@
       </div>
     </div>
 
-    <!-- Stats Banner -->
-    <div class="stats-banner">
-      <div class="streak-info">
-        <span class="streak-flame">🔥</span>
-        <div class="streak-text">
-          <span>سلسلة الإنجاز</span>
-          <strong id="streak-count">0 أيام</strong>
+    <!-- Dual Grid Dashboard Banner -->
+    <div class="dashboard-widgets-grid">
+      <div class="widget-card streak-widget">
+        <div class="streak-info">
+          <span class="streak-flame">🔥</span>
+          <div class="streak-text">
+            <span>سلسلة الإنجاز</span>
+            <strong id="streak-count">0 أيام</strong>
+          </div>
         </div>
       </div>
-      <div style="text-align:center">
-        <div style="font-size:0.75rem;opacity:0.85;margin-bottom:4px">منجز اليوم</div>
-        <div style="font-size:1.1rem;font-weight:800;" id="today-summary">0 / 0</div>
+      <div class="widget-card">
+        <div style="text-align:right">
+          <div style="font-size:0.72rem;opacity:0.9;margin-bottom:2px;font-weight:600">منجز اليوم</div>
+          <div style="font-size:1.1rem;font-weight:800;" id="today-summary">0 / 0</div>
+        </div>
+        <div class="progress-ring-container">
+          <svg class="progress-ring" viewBox="0 0 52 52">
+            <circle class="bg-circle" cx="26" cy="26" r="21"/>
+            <circle class="progress-circle" id="progress-circle" cx="26" cy="26" r="21"/>
+          </svg>
+          <span class="progress-value" id="progress-value">0%</span>
+        </div>
       </div>
-      <div class="progress-ring-container">
-        <svg class="progress-ring" viewBox="0 0 58 58">
-          <circle class="bg-circle" cx="29" cy="29" r="23"/>
-          <circle class="progress-circle" id="progress-circle" cx="29" cy="29" r="23"/>
-        </svg>
-        <span class="progress-value" id="progress-value">0%</span>
+    </div>
+
+    <!-- Summary Quick Chips Row -->
+    <div class="summary-chips-row">
+      <div class="summary-chip-card">
+        <span>⏳ المتبقي</span>
+        <strong id="pending-chip-count">0</strong>
+      </div>
+      <div class="summary-chip-card">
+        <span>✅ المكتمل</span>
+        <strong id="completed-chip-count">0</strong>
+      </div>
+      <div class="summary-chip-card">
+        <span>🔥 العاجل</span>
+        <strong id="urgent-chip-count">0</strong>
       </div>
     </div>
 
@@ -85,11 +105,16 @@
       <button class="chip-btn" data-category="shopping" role="tab">🛒 تسوق</button>
     </div>
 
-    <!-- Status Tabs -->
-    <div class="status-tabs" role="tablist" aria-label="حالة المهام">
-      <button class="tab-btn active" data-status="all" role="tab">الكل</button>
-      <button class="tab-btn" data-status="pending" role="tab">قيد التنفيذ</button>
-      <button class="tab-btn" data-status="completed" role="tab">مكتملة</button>
+    <!-- Status Tabs & Layout Mode Switcher -->
+    <div class="status-bar-header">
+      <div class="status-tabs" role="tablist" aria-label="حالة المهام">
+        <button class="tab-btn active" data-status="all" role="tab">الكل</button>
+        <button class="tab-btn" data-status="pending" role="tab">قيد التنفيذ</button>
+        <button class="tab-btn" data-status="completed" role="tab">مكتملة</button>
+      </div>
+      <button class="view-toggle-btn" id="layout-toggle-btn" title="تغيير طريقة العرض (شبكة / قائمة)" aria-label="طريقة العرض">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      </button>
     </div>
 
     <!-- Tasks List -->
@@ -135,9 +160,9 @@
     <!-- Data Management -->
     <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);">
       <p style="font-size:0.9rem;font-weight:700;margin-bottom:12px;color:var(--text-main);">💾 النسخ الاحتياطي والبيانات</p>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <button id="export-data-btn" class="chip-btn" style="justify-content:center;padding:12px;">📥 تصدير نسختك الاحتياطية (JSON)</button>
-        <button id="clear-completed-btn" class="chip-btn" style="justify-content:center;padding:12px;color:var(--danger);border-color:var(--danger-light);">🧹 مسح المهام المكتملة</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <button id="export-data-btn" class="chip-btn" style="justify-content:center;padding:12px;">📥 تصدير (JSON)</button>
+        <button id="clear-completed-btn" class="chip-btn" style="justify-content:center;padding:12px;color:var(--danger);border-color:var(--danger-light);">🧹 مسح المكتملة</button>
       </div>
     </div>
   </div>
@@ -194,12 +219,19 @@
 
       <div class="form-row">
         <div class="form-group">
+          <label for="task-category-input">التصنيف</label>
+          <select id="task-category-input" class="form-control">
+            <option value="work">💼 عمل</option>
+            <option value="personal">👤 شخصي</option>
+            <option value="study">📚 دراسة</option>
+            <option value="health">🏋️ صحة</option>
+            <option value="shopping">🛒 تسوق</option>
+          </select>
+        </div>
+
+        <div class="form-group">
           <label for="task-date-input">تاريخ الاستحقاق</label>
           <input type="date" id="task-date-input" class="form-control" />
-        </div>
-        <div class="form-group">
-          <label for="task-time-input">التوقيت</label>
-          <input type="time" id="task-time-input" class="form-control" />
         </div>
       </div>
 
@@ -219,17 +251,6 @@
             ☕ منخفضة
           </label>
         </div>
-      </div>
-
-      <div class="form-group">
-        <label for="task-category-input">التصنيف</label>
-        <select id="task-category-input" class="form-control">
-          <option value="work">💼 عمل</option>
-          <option value="personal">👤 شخصي</option>
-          <option value="study">📚 دراسة</option>
-          <option value="health">🏋️ صحة</option>
-          <option value="shopping">🛒 تسوق</option>
-        </select>
       </div>
 
       <div class="form-group">
@@ -268,6 +289,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=2"></script>
+<script src="js/app.js?v=3"></script>
 </body>
 </html>
