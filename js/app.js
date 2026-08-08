@@ -1,5 +1,5 @@
 // =============================================
-//  TaskFlow v9 – Architecture & Logic Fixes
+//  TaskFlow v10 – Full Rebuild & Bug Fixes
 // =============================================
 
 const DB_KEY = 'taskflow_data';
@@ -301,6 +301,7 @@ function checkDueAlarmsAndTimers() {
   const now = Date.now();
   const todayStr = new Date().toISOString().slice(0, 10);
   const nowTimeStr = new Date().toTimeString().slice(0, 5); // "HH:MM"
+  let needsSave = false;
 
   tasks.forEach(task => {
     if (task.completed) return;
@@ -311,27 +312,34 @@ function checkDueAlarmsAndTimers() {
 
       const badgeEl = document.getElementById(`countdown-${task.id}`);
       if (badgeEl) {
-        if (remainingMs > 0) {
-          badgeEl.textContent = `⏱️ ${formatCountdownMs(remainingMs)}`;
-        } else {
-          badgeEl.textContent = `🔔 رنّ المنبه`;
-        }
+        badgeEl.textContent = remainingMs > 0
+          ? `⏱️ ${formatCountdownMs(remainingMs)}`
+          : `🔔 رنّ المنبه`;
       }
 
       if (remainingMs <= 0) {
         task.alarmRingTriggered = true;
-        saveData();
+        needsSave = true;
         triggerTaskAlarmPopup(task);
       }
     }
 
-    // 2. Check scheduled due time for today
-    if (alarmEnabled && task.dueDate === todayStr && task.dueTime === nowTimeStr && !task.alarmRingTriggered) {
+    // 2. Check scheduled due time for today (only if alarmEnabled)
+    if (
+      alarmEnabled &&
+      task.dueDate === todayStr &&
+      task.dueTime &&
+      task.dueTime === nowTimeStr &&
+      !task.alarmRingTriggered
+    ) {
       task.alarmRingTriggered = true;
-      saveData();
+      needsSave = true;
       triggerTaskAlarmPopup(task);
     }
   });
+
+  // Batch save only if something changed to avoid unnecessary writes
+  if (needsSave) saveData();
 }
 
 function formatCountdownMs(ms) {
@@ -656,15 +664,23 @@ const priorityMap = {
   low: { label: 'منخفضة', icon: '☕', cls: 'priority-low' },
 };
 
+function getTodayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function getFilteredTasks() {
+  const todayStr = getTodayStr();
   return tasks.filter(task => {
     const matchCat = currentFilter.category === 'all' || task.category === currentFilter.category;
     let matchStatus = true;
     if (currentFilter.status === 'completed') matchStatus = task.completed;
     else if (currentFilter.status === 'pending') matchStatus = !task.completed;
-    
+
+    // "Today" view: show tasks created today OR with dueDate of today
     if (activeView === 'today') {
-      matchStatus = matchStatus && isToday(task.createdAt);
+      const createdToday = isToday(task.createdAt);
+      const dueToday = task.dueDate === todayStr;
+      if (!createdToday && !dueToday) return false;
     }
 
     const q = currentFilter.search.trim().toLowerCase();
@@ -814,11 +830,16 @@ function createTaskCard(task) {
     </div>`;
 }
 
-function formatDue(date) {
-  if (!date) return '';
-  const d = new Date(date);
-  const diff = d - new Date();
+function formatDue(dateStr) {
+  if (!dateStr) return '';
+  // Compare dates only (no time component) to avoid false "late" on same day
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr + 'T00:00:00');
+  const diff = d - today;
   if (diff < 0) return `⚠️ متأخرة`;
+  if (diff === 0) return `📅 اليوم`;
+  if (diff === 86400000) return `📅 غداً`;
   return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
 }
 
@@ -880,15 +901,28 @@ function addTask(data) {
 function updateTask(id, data) {
   const idx = tasks.findIndex(t => t.id === id);
   if (idx === -1) return;
+  const oldSubtasks = tasks[idx].subtasks || [];
+  const oldDueDate = tasks[idx].dueDate;
+  const oldDueTime = tasks[idx].dueTime;
+  const newDueDate = data.dueDate || null;
+  const newDueTime = data.dueTime || null;
+  // If due date/time changed, reset alarm trigger so it fires again
+  const dueDateChanged = oldDueDate !== newDueDate || oldDueTime !== newDueTime;
   tasks[idx] = {
     ...tasks[idx],
     title: data.title.trim(),
     description: (data.description || '').trim(),
     category: data.category,
     priority: data.priority,
-    dueDate: data.dueDate || null,
-    dueTime: data.dueTime || null,
-    subtasks: (data.subtasks || []).filter(s => s.text && s.text.trim()).map(s => ({ text: s.text.trim(), done: false })),
+    dueDate: newDueDate,
+    dueTime: newDueTime,
+    // Preserve existing subtask completion state by matching on index
+    subtasks: (data.subtasks || []).filter(s => s.text && s.text.trim()).map((s, i) => ({
+      text: s.text.trim(),
+      done: oldSubtasks[i] ? oldSubtasks[i].done : false,
+    })),
+    // Reset alarm if due date/time changed so it can fire again
+    alarmRingTriggered: dueDateChanged ? false : tasks[idx].alarmRingTriggered,
   };
   saveData();
   renderTasks();
@@ -1069,52 +1103,75 @@ function drawWeeklyChart() {
   const ctx = canvas.getContext('2d');
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
+  if (rect.width === 0) return; // Not yet visible
   canvas.width = rect.width * dpr;
   canvas.height = rect.height * dpr;
   ctx.scale(dpr, dpr);
 
   const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
   const counts = [0, 0, 0, 0, 0, 0, 0];
+  const todayDayIdx = new Date().getDay();
 
   tasks.filter(t => t.completed).forEach(t => {
     const dayIdx = new Date(t.createdAt).getDay();
     counts[dayIdx]++;
   });
 
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#0d9488';
+  const primaryColor2 = isDark ? '#2dd4bf' : '#0d9488';
+
   const maxVal = Math.max(...counts, 4);
   const width = rect.width;
   const height = rect.height;
-  const padding = 25;
+  const padding = 28;
   const chartHeight = height - padding * 2;
-  const barWidth = (width - padding * 2) / 7 - 12;
+  const barWidth = (width - padding * 2) / 7 - 10;
 
   ctx.clearRect(0, 0, width, height);
 
   days.forEach((day, i) => {
-    const x = padding + i * ((width - padding * 2) / 7) + 6;
+    const x = padding + i * ((width - padding * 2) / 7) + 5;
     const barH = (counts[i] / maxVal) * chartHeight;
     const y = height - padding - barH;
+    const isToday = i === todayDayIdx;
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+    // Background track
+    ctx.fillStyle = isToday ? 'rgba(45,212,191,0.12)' : 'rgba(255, 255, 255, 0.05)';
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(x, padding, barWidth, chartHeight, 6);
     else ctx.rect(x, padding, barWidth, chartHeight);
     ctx.fill();
 
+    // Bar gradient – today is brighter
     const grad = ctx.createLinearGradient(0, y, 0, height - padding);
-    grad.addColorStop(0, '#0d9488');
-    grad.addColorStop(1, '#2dd4bf');
+    if (isToday) {
+      grad.addColorStop(0, '#2dd4bf');
+      grad.addColorStop(1, '#0d9488');
+    } else {
+      grad.addColorStop(0, primaryColor);
+      grad.addColorStop(1, primaryColor2);
+    }
     ctx.fillStyle = grad;
+    ctx.globalAlpha = isToday ? 1 : 0.75;
     ctx.beginPath();
     if (ctx.roundRect) ctx.roundRect(x, y, barWidth, Math.max(barH, 4), 6);
     else ctx.rect(x, y, barWidth, Math.max(barH, 4));
     ctx.fill();
+    ctx.globalAlpha = 1;
 
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '600 10px Inter, sans-serif';
+    // Day label
+    ctx.fillStyle = isToday ? (isDark ? '#2dd4bf' : '#0d9488') : '#94a3b8';
+    ctx.font = `${isToday ? '700' : '500'} 10px Inter, sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillText(day, x + barWidth / 2, height - 6);
-    ctx.fillText(counts[i], x + barWidth / 2, y - 4);
+
+    // Count label
+    if (counts[i] > 0) {
+      ctx.fillStyle = isToday ? '#fff' : '#94a3b8';
+      ctx.font = '600 10px Inter, sans-serif';
+      ctx.fillText(counts[i], x + barWidth / 2, y - 4);
+    }
   });
 }
 
@@ -1445,7 +1502,8 @@ window.deleteMemo = deleteMemo;
 document.addEventListener('DOMContentLoaded', () => {
   loadData();
   initAlarmSystem();
-  initStickyNotification();
+  // initStickyNotification: update sticky if already enabled
+  if (stickyEnabled) updateStickyNotification();
 
   const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
   applyTheme(savedTheme);
@@ -1465,7 +1523,15 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('pomo-reset-btn')?.addEventListener('click', resetPomoTimer);
 
   // Voice Input Buttons
-  document.getElementById('voice-input-btn')?.addEventListener('click', () => startVoiceRecognition('search-input'));
+  // Header mic btn → opens add modal, then captures voice into title field
+  document.getElementById('voice-input-btn')?.addEventListener('click', () => {
+    if (document.getElementById('task-modal')?.classList.contains('open')) {
+      startVoiceRecognition('task-title-input');
+    } else {
+      openAddModal();
+      setTimeout(() => startVoiceRecognition('task-title-input'), 450);
+    }
+  });
   document.getElementById('modal-mic-btn')?.addEventListener('click', () => startVoiceRecognition('task-title-input'));
 
   // Alarm Permission Button
@@ -1548,11 +1614,11 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTasks();
   });
 
-  // Category Filter
+  // Category Filter – scoped to #categories-filter only (not template chips)
   document.getElementById('categories-filter')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-category]');
+    const btn = e.target.closest('#categories-filter [data-category]');
     if (!btn) return;
-    document.querySelectorAll('[data-category]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#categories-filter [data-category]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentFilter.category = btn.dataset.category;
     renderTasks();
@@ -1631,10 +1697,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      // Only dismiss alarm popup if it is actually open (prevent accidental stop)
+      const alarmModal = document.getElementById('alarm-alert-modal');
+      if (alarmModal?.classList.contains('open')) {
+        dismissAlarmPopup('only');
+        return;
+      }
       closeTaskModal();
       closeDetailModal();
       closeTimerModal();
-      dismissAlarmPopup('only');
     }
   });
 

@@ -1,10 +1,10 @@
-// TaskFlow Service Worker v11 – Sticky + Alarm Notification Support
-const CACHE_NAME = 'taskflow-cache-v11';
+// TaskFlow Service Worker v12 – Full Rebuild & Bug Fixes
+const CACHE_NAME = 'taskflow-cache-v12';
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=10',
-  './js/app.js?v=10',
+  './css/styles.css?v=11',
+  './js/app.js?v=11',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'
