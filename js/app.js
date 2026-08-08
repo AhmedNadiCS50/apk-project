@@ -8,6 +8,7 @@ const COLOR_THEME_KEY = 'taskflow_color_theme';
 const LAYOUT_MODE_KEY = 'taskflow_layout_mode';
 const STREAK_KEY = 'taskflow_streak';
 const ALARM_KEY = 'taskflow_alarm_enabled';
+const STICKY_KEY = 'taskflow_sticky_enabled';
 const MEMOS_KEY = 'taskflow_voice_memos';
 
 // Global State
@@ -18,6 +19,7 @@ let activeView = 'tasks';
 let isGridMode = false;
 let dbInstance = null;
 let alarmEnabled = false;
+let stickyEnabled = false;
 
 // Timers State
 let pomoSeconds = 25 * 60;
@@ -65,6 +67,7 @@ function saveData() {
     }
   }
   updateDatabaseInfoUI();
+  updateStickyNotification();
 }
 
 function loadData() {
@@ -104,8 +107,100 @@ function updateDatabaseInfoUI() {
 // =============================================
 function initAlarmSystem() {
   alarmEnabled = localStorage.getItem(ALARM_KEY) === 'true';
+  stickyEnabled = localStorage.getItem(STICKY_KEY) === 'true';
   updateAlarmBtnUI();
+  updateStickyBtnUI();
   setInterval(checkDueAlarmsAndTimers, 1000);
+}
+
+function updateStickyBtnUI() {
+  const btn = document.getElementById('sticky-permission-btn');
+  const desc = document.getElementById('sticky-status-desc');
+  if (btn) {
+    if (stickyEnabled) {
+      btn.textContent = 'مفعّل 📌';
+      btn.style.background = 'var(--primary)';
+      btn.style.color = '#ffffff';
+      if (desc) desc.textContent = 'إشعار مثبت مفعّل في ستارة الإشعارات 📌';
+    } else {
+      btn.textContent = 'تفعيل 📌';
+      btn.style.background = 'var(--surface-solid)';
+      btn.style.color = 'var(--text-muted)';
+      if (desc) desc.textContent = 'اضغط لتثبيت إشعار دائم يوضح ملخص المهام';
+    }
+  }
+}
+
+function toggleStickyPermission() {
+  if (!('Notification' in window)) {
+    showToast('⚠️ متصفحك لا يدعم الإشعارات المباشرة', 'error');
+    return;
+  }
+
+  if (Notification.permission === 'granted') {
+    stickyEnabled = !stickyEnabled;
+    localStorage.setItem(STICKY_KEY, stickyEnabled);
+    updateStickyBtnUI();
+    if (stickyEnabled) {
+      updateStickyNotification();
+      showToast('📌 تم تثبيت إشعار الملخص في ستارة الهاتف!', 'success');
+    } else {
+      clearStickyNotification();
+      showToast('🔕 تم إلغاء الإشعار المثبت', 'info');
+    }
+  } else {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        stickyEnabled = true;
+        localStorage.setItem(STICKY_KEY, 'true');
+        updateStickyBtnUI();
+        updateStickyNotification();
+        showToast('📌 تم السماح وتثبيت إشعار الملخص!', 'success');
+      } else {
+        showToast('⚠️ يرجى السماح بالإشعارات من إعدادات الهاتف', 'error');
+      }
+    });
+  }
+}
+
+function updateStickyNotification() {
+  if (!stickyEnabled || !('Notification' in window) || Notification.permission !== 'granted') {
+    clearStickyNotification();
+    return;
+  }
+
+  const pendingCount = tasks.filter(t => !t.completed).length;
+  const completedCount = tasks.filter(t => t.completed).length;
+
+  const title = '📋 TaskFlow – ملخص مهام اليوم';
+  const body = `⏳ متبقية: ${pendingCount} مهمة  |  ✅ منجزة: ${completedCount} مهمة`;
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(title, {
+        body: body,
+        icon: 'icons/icon-192.png',
+        badge: 'icons/icon-192.png',
+        tag: 'taskflow-sticky-summary',
+        renotify: false,
+        requireInteraction: true,
+        silent: true,
+        dir: 'rtl',
+        lang: 'ar',
+        data: { url: './' }
+      });
+    }).catch(err => console.warn('Sticky notification error:', err));
+  }
+}
+
+function clearStickyNotification() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.getNotifications({ tag: 'taskflow-sticky-summary' }).then(notifications => {
+        notifications.forEach(n => n.close());
+      });
+    }).catch(err => {});
+  }
 }
 
 function updateAlarmBtnUI() {
@@ -1347,6 +1442,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Alarm Permission Button
   document.getElementById('alarm-permission-btn')?.addEventListener('click', toggleAlarmPermission);
+
+  // Sticky Notification Button
+  document.getElementById('sticky-permission-btn')?.addEventListener('click', toggleStickyPermission);
+
+  // Refresh sticky notification on app focus (updates pending count)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) updateStickyNotification();
+  });
 
   // Template Quick Chips
   document.querySelectorAll('.template-chip').forEach(btn => {

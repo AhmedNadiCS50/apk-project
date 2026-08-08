@@ -1,10 +1,10 @@
-// TaskFlow Service Worker v10 - Network First + Push Notification Support
-const CACHE_NAME = 'taskflow-cache-v10';
+// TaskFlow Service Worker v11 – Sticky + Alarm Notification Support
+const CACHE_NAME = 'taskflow-cache-v11';
 const ASSETS = [
   './',
   './index.html',
   './css/styles.css?v=10',
-  './js/app.js?v=9',
+  './js/app.js?v=10',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'
@@ -57,16 +57,25 @@ self.addEventListener('push', event => {
     vibrate: [200, 100, 200],
     dir: 'rtl',
     lang: 'ar',
-    tag: 'taskflow-alarm',
+    tag: data.tag || 'taskflow-alarm',
     renotify: true,
-    data: { url: self.registration.scope }
+    requireInteraction: data.sticky || false,
+    silent: data.silent || false,
+    data: { url: self.registration.scope, sticky: data.sticky || false }
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Notification Click – open or focus the app
+// Notification Click Handler
 self.addEventListener('notificationclick', event => {
-  event.notification.close();
+  const notifData = event.notification.data || {};
+  const isSticky = notifData.sticky || event.notification.tag === 'taskflow-sticky-summary';
+
+  // Only close alarm notifications on click, keep sticky open (user dismisses manually)
+  if (!isSticky) {
+    event.notification.close();
+  }
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
       for (const client of clientList) {
@@ -76,3 +85,4 @@ self.addEventListener('notificationclick', event => {
     })
   );
 });
+
