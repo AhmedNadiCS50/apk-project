@@ -2971,6 +2971,7 @@ function openChatbot() {
   if (!panel) return;
   chatbotOpen = true;
   panel.style.display = 'flex';
+  panel.style.flexDirection = 'column';
   panel.style.animation = 'chatPanelIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both';
   document.getElementById('chatbot-unread-dot').style.display = 'none';
   if (chatHistory.length === 0) {

@@ -1,5 +1,5 @@
-// TaskFlow Service Worker v22 – Flow AI Local Chatbot
-const CACHE_NAME = 'taskflow-cache-v22';
+// TaskFlow Service Worker v23 – Flow AI UI Layout Fix
+const CACHE_NAME = 'taskflow-cache-v23';
 const ASSETS = [
   './',
   './index.html',
