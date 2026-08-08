@@ -1,10 +1,10 @@
-// TaskFlow Service Worker v18 – Performance & Smoothness Boost
-const CACHE_NAME = 'taskflow-cache-v18';
+// TaskFlow Service Worker v19 – 60FPS Hardware Acceleration & Ultra-Smooth Performance
+const CACHE_NAME = 'taskflow-cache-v19';
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css?v=18',
-  './js/app.js?v=18',
+  './css/styles.css?v=19',
+  './js/app.js?v=19',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'

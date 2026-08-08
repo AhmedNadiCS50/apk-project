@@ -2073,6 +2073,7 @@ html {
     font-size: 1rem;
   }
 
+
 /* ── Mobile Performance Optimizations (GPU & Battery Boost) ── */
 @media (max-width: 768px) {
   /* 1. Hide 3 large blurred orb elements that drain mobile GPU */
@@ -2089,11 +2090,42 @@ html {
     animation: none !important;
   }
 
-  /* 3. Simplify heavy glass backdrop blur for smooth 60fps scrolling */
+  /* 3. Replace heavy backdrop-filter blur with fast solid/semi-transparent background */
   .app-header,
   .bottom-nav {
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--surface-solid) !important;
   }
+
+  /* 4. Disable heavy multi-layered box-shadows on mobile */
+  *, *::before, *::after {
+    box-shadow: none !important;
+  }
+  .task-card, .stat-card, .pomo-card, .info-side-card, .calendar-card, .settings-card {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+  }
+}
+
+/* ── Hardware GPU Acceleration & DOM Containment (Butter-Smooth 60FPS) ── */
+.app-content {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  transform: translate3d(0, 0, 0);
+}
+
+.task-card {
+  contain: content;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 80px;
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+}
+
+.bottom-nav,
+.fab-btn,
+.modal-sheet {
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
