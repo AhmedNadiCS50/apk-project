@@ -145,6 +145,22 @@
         <button class="template-chip" data-template="تأمل 10 دقائق" data-category="health">🧘 تأمل</button>
         <button class="template-chip" data-template="مراسلة رسائل البريد" data-category="work">📧 بريد</button>
       </div>
+
+      <!-- Row 4: Sticky Voice Memo & Quick Thoughts Widget -->
+      <div class="voice-memo-widget" id="voice-memo-widget">
+        <div class="voice-memo-header">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:1.1rem">🎙️</span>
+            <strong style="font-size:0.85rem;color:var(--text-main);">مذكرة صوتية سريعة</strong>
+          </div>
+          <button id="record-memo-btn" class="chip-btn" style="padding:5px 12px;font-size:0.75rem;background:var(--primary);color:#fff;border:none;">
+            تسجيل 🎙️
+          </button>
+        </div>
+        <div id="memos-list" class="memos-list">
+          <p class="memo-empty-txt">لا توجد مذكرات مثبتة. اضغط تسجيل لإضافة فكرة سريعة!</p>
+        </div>
+      </div>
     </section>
 
     <!-- === TASKS SECTION === -->

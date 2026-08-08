@@ -1215,3 +1215,80 @@ body { display: flex; justify-content: center; align-items: flex-start; }
   to   { box-shadow: 0 0 12px 3px rgba(234,88,12,0.6); }
 }
 
+/* ═══════════════════════════════════════
+   VOICE MEMO WIDGET
+   ═══════════════════════════════════════ */
+.voice-memo-widget {
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--spring);
+}
+.voice-memo-widget:hover { border-color: var(--primary); }
+
+.voice-memo-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+
+.memos-list { display: flex; flex-direction: column; gap: 6px; }
+.memo-empty-txt { font-size: 0.74rem; color: var(--text-muted); text-align: center; padding: 4px 0; }
+
+.memo-item {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  font-size: 0.82rem; color: var(--text-main);
+  animation: fadeIn 0.3s ease;
+}
+.memo-item-text { font-weight: 600; flex: 1; margin-left: 8px; }
+.memo-actions { display: flex; gap: 4px; }
+
+/* ═══════════════════════════════════════
+   INLINE SUBTASKS TOGGLE & LIST
+   ═══════════════════════════════════════ */
+.inline-subtasks-toggle {
+  background: transparent; border: none;
+  color: var(--primary); font-size: 0.76rem; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; gap: 4px;
+  padding: 4px 0; transition: var(--transition);
+}
+.inline-subtasks-toggle:hover { color: var(--primary-hover); text-decoration: underline; }
+
+.inline-subtasks-container {
+  display: none; flex-direction: column; gap: 6px;
+  margin-top: 8px; padding: 8px 10px;
+  background: var(--surface-hover); border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  animation: fadeIn 0.25s ease;
+}
+.inline-subtasks-container.open { display: flex; }
+
+.inline-subtask-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.82rem; color: var(--text-main); cursor: pointer;
+}
+.inline-subtask-row input { accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer; }
+.inline-subtask-row.done span { text-decoration: line-through; opacity: 0.5; }
+
+/* ═══════════════════════════════════════
+   SWIPE GESTURE FEEDBACK ON CARDS
+   ═══════════════════════════════════════ */
+.task-card {
+  user-select: none;
+  touch-action: pan-y;
+  will-change: transform;
+}
+.task-card.swiping-right {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: var(--success) !important;
+}
+.task-card.swiping-left {
+  background: rgba(234, 88, 12, 0.15) !important;
+  border-color: var(--accent) !important;
+}
+
+

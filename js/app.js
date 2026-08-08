@@ -598,6 +598,31 @@ function renderTasks() {
     btn.addEventListener('click', () => openDetailModal(btn.dataset.id));
   });
 
+  // Inline Subtasks Toggle
+  list.querySelectorAll('.inline-subtasks-toggle').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const container = document.getElementById(`subtasks-container-${btn.dataset.id}`);
+      if (container) container.classList.toggle('open');
+    });
+  });
+
+  // Inline Subtask Checkbox Handler
+  list.querySelectorAll('.inline-subtask-check').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const taskId = cb.dataset.taskId;
+      const subIdx = parseInt(cb.dataset.subIdx);
+      const task = tasks.find(t => t.id === taskId);
+      if (!task || !task.subtasks[subIdx]) return;
+      task.subtasks[subIdx].done = cb.checked;
+      saveData();
+      renderTasks();
+    });
+  });
+
+  // Attach Swipe Gestures
+  attachSwipeGestures();
+
   updateProgressUI();
 }
 
@@ -626,11 +651,17 @@ function createTaskCard(task) {
   const subtasksBar = subtasksTotal > 0 ? `
     <div class="subtasks-bar-container">
       <div class="subtasks-bar-label">
-        <span>المهام الفرعية</span>
-        <span>${subtasksDone}/${subtasksTotal}</span>
+        <button class="inline-subtasks-toggle" data-id="${task.id}">🔽 <span id="sub-count-${task.id}">${subtasksDone}/${subtasksTotal}</span> مهام فرعية</button>
       </div>
       <div class="subtasks-progress">
-        <div class="subtasks-progress-fill" style="width:${subPct}%"></div>
+        <div class="subtasks-progress-fill" id="sub-fill-${task.id}" style="width:${subPct}%"></div>
+      </div>
+      <div class="inline-subtasks-container" id="subtasks-container-${task.id}">
+        ${task.subtasks.map((s, i) => `
+          <label class="inline-subtask-row ${s.done ? 'done' : ''}">
+            <input type="checkbox" class="inline-subtask-check" data-task-id="${task.id}" data-sub-idx="${i}" ${s.done ? 'checked' : ''} />
+            <span>${escapeHtml(s.text)}</span>
+          </label>`).join('')}
       </div>
     </div>` : '';
 
@@ -1370,6 +1401,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('alarm-dismiss-done-btn')?.addEventListener('click', () => dismissAlarmPopup('done'));
   document.getElementById('alarm-dismiss-only-btn')?.addEventListener('click', () => dismissAlarmPopup('only'));
 
+  // Record Voice Memo Button
+  document.getElementById('record-memo-btn')?.addEventListener('click', recordQuickVoiceMemo);
+  renderMemos();
+
   // Background Particles Canvas Initialization
   initParticleCanvas();
 
@@ -1387,6 +1422,143 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.appendChild(circle);
     setTimeout(() => circle.remove(), 600);
   });
+
+// ═══════════════════════════════════════
+// SWIPE GESTURES ON TASK CARDS
+// ═══════════════════════════════════════
+function attachSwipeGestures() {
+  document.querySelectorAll('.task-card').forEach(card => {
+    let startX = 0;
+    let diffX = 0;
+    let isSwiping = false;
+    const taskId = card.id.replace('task-', '');
+
+    const onStart = (e) => {
+      startX = e.touches ? e.touches[0].clientX : e.clientX;
+      isSwiping = true;
+    };
+
+    const onMove = (e) => {
+      if (!isSwiping) return;
+      const currentX = e.touches ? e.touches[0].clientX : e.clientX;
+      diffX = currentX - startX;
+
+      if (Math.abs(diffX) > 25) {
+        card.style.transform = `translateX(${diffX * 0.4}px)`;
+        card.classList.toggle('swiping-right', diffX > 40);
+        card.classList.toggle('swiping-left', diffX < -40);
+      }
+    };
+
+    const onEnd = () => {
+      if (!isSwiping) return;
+      isSwiping = false;
+      card.style.transform = '';
+      card.classList.remove('swiping-right', 'swiping-left');
+
+      if (diffX > 90) {
+        // Swipe Right -> Complete task
+        toggleTask(taskId);
+      } else if (diffX < -90) {
+        // Swipe Left -> Open timer modal
+        openTimerModal(taskId);
+      }
+      diffX = 0;
+    };
+
+    card.addEventListener('touchstart', onStart, { passive: true });
+    card.addEventListener('touchmove', onMove, { passive: true });
+    card.addEventListener('touchend', onEnd);
+  });
+}
+
+// ═══════════════════════════════════════
+// STICKY VOICE MEMOS LOGIC
+// ═══════════════════════════════════════
+const MEMOS_KEY = 'taskflow_voice_memos';
+
+function getMemos() {
+  try { return JSON.parse(localStorage.getItem(MEMOS_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveMemos(memos) {
+  localStorage.setItem(MEMOS_KEY, JSON.stringify(memos));
+}
+
+function renderMemos() {
+  const container = document.getElementById('memos-list');
+  if (!container) return;
+  const memos = getMemos();
+
+  if (memos.length === 0) {
+    container.innerHTML = `<p class="memo-empty-txt">لا توجد مذكرات مثبتة. اضغط تسجيل لإضافة فكرة سريعة!</p>`;
+    return;
+  }
+
+  container.innerHTML = memos.map((memo, idx) => `
+    <div class="memo-item">
+      <span class="memo-item-text">💡 ${escapeHtml(memo.text)}</span>
+      <div class="memo-actions">
+        <button class="chip-btn" onclick="convertMemoToTask(${idx})" style="padding:4px 8px;font-size:0.72rem;background:var(--primary-light);color:var(--primary);border-color:var(--primary)">➕ مهمة</button>
+        <button class="action-icon-btn delete" onclick="deleteMemo(${idx})" title="حذف" style="padding:4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="14" height="14" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+    </div>`).join('');
+}
+
+function recordQuickVoiceMemo() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    const text = prompt('اكتب فكرة سريعة لتثبيتها:');
+    if (text && text.trim()) addMemoText(text.trim());
+    return;
+  }
+
+  const recognition = new SpeechRec();
+  recognition.lang = 'ar-EG';
+  showToast('🎙️ تحدث الآن بكتابة الفكرة السريعة...', 'info');
+
+  recognition.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    if (text && text.trim()) {
+      addMemoText(text.trim());
+      showToast(`📌 تم تثبيت المذكرة: "${text}"`, 'success');
+    }
+  };
+
+  recognition.onerror = () => {
+    const fallback = prompt('لم يتم التقاط الصوت. اكتب الفكرة يدويًا:');
+    if (fallback && fallback.trim()) addMemoText(fallback.trim());
+  };
+
+  recognition.start();
+}
+
+function addMemoText(text) {
+  const memos = getMemos();
+  memos.unshift({ text, createdAt: new Date().toISOString() });
+  saveMemos(memos);
+  renderMemos();
+}
+
+function convertMemoToTask(idx) {
+  const memos = getMemos();
+  if (!memos[idx]) return;
+  const text = memos[idx].text;
+
+  addTask({ title: text, category: 'personal', priority: 'medium' });
+  memos.splice(idx, 1);
+  saveMemos(memos);
+  renderMemos();
+  showToast('✅ تم تحويل المذكرة إلى مهمة بنجاح!', 'success');
+}
+
+function deleteMemo(idx) {
+  const memos = getMemos();
+  memos.splice(idx, 1);
+  saveMemos(memos);
+  renderMemos();
+}
 });
 
 // Ambient Background Particle Canvas System
