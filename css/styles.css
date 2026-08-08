@@ -131,24 +131,6 @@
   --text-main: #f1f7ff;
   --text-muted: #8ca3cd;
 }
-[data-color-theme="cobalt"][data-theme="light"] {
-  --bg-gradient: radial-gradient(circle at 50% 0%, #dbeafe 0%, #eff6ff 60%, #f1f5f9 100%);
-  --bg-main: #f0f7ff;
-  --surface: rgba(255, 255, 255, 0.88);
-  --surface-solid: #ffffff;
-  --surface-hover: #dbeafe;
-  --border: rgba(37, 99, 235, 0.18);
-  --border-focus: #2563eb;
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-light: rgba(37, 99, 235, 0.12);
-  --primary-glow: rgba(37, 99, 235, 0.35);
-  --secondary: #3b82f6;
-  --accent: #0891b2;
-  --accent-light: rgba(8, 145, 178, 0.12);
-  --text-main: #0c1c38;
-  --text-muted: #53678a;
-}
 
 /* 4. Sunset Crimson */
 [data-color-theme="sunset"][data-theme="dark"] {
@@ -259,7 +241,7 @@ body {
 /* Mobile, Tablet & Desktop Dynamic Responsive Layout */
 .app-container {
   width: 100%;
-  max-width: 520px;
+  max-width: 500px;
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg-main);
@@ -272,7 +254,6 @@ body {
   z-index: 1;
 }
 
-/* Tablet Breakpoint (≥768px): Expand Container for Multi-Column Layout */
 @media (min-width: 768px) {
   body {
     padding: 30px 20px;
@@ -285,24 +266,6 @@ body {
     overflow: hidden;
     border: 1px solid var(--border);
     box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5);
-  }
-  .tasks-list {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-  .tasks-list.grid-mode {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* Desktop Breakpoint (≥1024px): Ultra-Wide Dashboard Experience */
-@media (min-width: 1024px) {
-  .app-container {
-    max-width: 960px;
-  }
-  .dashboard-widgets-grid {
-    grid-template-columns: 1fr 1fr 1fr;
   }
 }
 
@@ -719,17 +682,58 @@ body {
   background: var(--primary-light);
 }
 
-/* Tasks List Grid/List Dynamic Modes */
+/* Tasks List - Default List Mode */
 .tasks-list {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
+/* =============================================
+   BEAUTIFUL PERFECTED GRID MODE
+   ============================================= */
 .tasks-list.grid-mode {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.tasks-list.grid-mode .task-card {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tasks-list.grid-mode .task-header {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tasks-list.grid-mode .task-body {
+  width: 100%;
+}
+
+.tasks-list.grid-mode .task-title {
+  font-size: 0.92rem;
+  line-height: 1.35;
+  margin-top: 4px;
+  margin-bottom: 6px;
+}
+
+.tasks-list.grid-mode .task-actions {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  margin-top: 6px;
+}
+
+.tasks-list.grid-mode .task-actions .action-icon-btn {
+  padding: 6px;
 }
 
 .empty-state {
@@ -762,7 +766,7 @@ body {
   font-weight: 700;
 }
 
-/* Single Task Card - Structured Grid Layout */
+/* Single Task Card - Default List Layout */
 .task-card {
   background: var(--surface-solid);
   border: 1px solid var(--border);
@@ -1045,7 +1049,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 520px;
+  max-width: 500px;
   height: calc(72px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   background: var(--surface);
@@ -1122,7 +1126,7 @@ body {
 
 .modal-card {
   width: 100%;
-  max-width: 520px;
+  max-width: 500px;
   background: var(--bg-main);
   border-top-left-radius: var(--radius-lg);
   border-top-right-radius: var(--radius-lg);
