@@ -309,8 +309,12 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="task-date-input">تاريخ الاستحقاق</label>
+          <label for="task-date-input">التاريخ</label>
           <input type="date" id="task-date-input" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label for="task-time-input">الوقت ⏰</label>
+          <input type="time" id="task-time-input" class="form-control" />
         </div>
       </div>
       <div class="form-group">
@@ -351,6 +355,53 @@
       </button>
     </div>
     <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- QUICK TIMER / ALARM PICKER MODAL -->
+<div class="modal-overlay" id="timer-modal" role="dialog" aria-modal="true">
+  <div class="modal-card" style="text-align:center;">
+    <div class="modal-header">
+      <h2>⏰ ضبط مؤقت للمهمة</h2>
+      <button class="icon-btn" id="timer-close-btn" aria-label="إغلاق">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <p id="timer-task-title" style="font-size:0.95rem;font-weight:700;color:var(--primary);margin-bottom:16px;">اسم المهمة</p>
+
+    <!-- Quick duration options -->
+    <p style="font-size:0.82rem;color:var(--text-muted);font-weight:600;margin-bottom:10px;">اختر مدة التنازلي:</p>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;">
+      <button class="chip-btn quick-timer-btn" data-mins="5" style="justify-content:center;padding:12px;">⏱️ 5 دقائق</button>
+      <button class="chip-btn quick-timer-btn" data-mins="15" style="justify-content:center;padding:12px;">⏱️ 15 دقيقة</button>
+      <button class="chip-btn quick-timer-btn" data-mins="30" style="justify-content:center;padding:12px;">⏱️ 30 دقيقة</button>
+      <button class="chip-btn quick-timer-btn" data-mins="60" style="justify-content:center;padding:12px;">⏱️ 1 ساعة</button>
+    </div>
+
+    <div style="height:1px;background:var(--border);margin:14px 0;"></div>
+
+    <p style="font-size:0.82rem;color:var(--text-muted);font-weight:600;margin-bottom:8px;">أو حدد وقت معين بالدقيقة:</p>
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <input type="number" id="custom-timer-input" class="form-control" placeholder="مثال: 45" min="1" max="1440" style="text-align:center;" />
+      <button id="custom-timer-start-btn" class="chip-btn" style="background:var(--primary);color:#fff;padding:0 20px;white-space:nowrap;">ابدأ 🚀</button>
+    </div>
+
+    <button id="cancel-timer-btn" style="width:100%;padding:10px;border-radius:var(--radius-md);border:1px solid var(--danger-light);background:var(--danger-light);color:var(--danger);font-weight:700;cursor:pointer;display:none;">إلغاء المؤقت الحالي 🔕</button>
+  </div>
+</div>
+
+<!-- RINGING ALARM POPUP MODAL -->
+<div class="modal-overlay" id="alarm-alert-modal" role="dialog" aria-modal="true" style="z-index:300;">
+  <div class="modal-card" style="text-align:center;padding:32px 24px;">
+    <div class="alarm-bell-icon" style="font-size:3.8rem;margin-bottom:12px;animation:bellRinging 0.6s infinite ease-in-out alternate;">⏰</div>
+    <h2 style="font-size:1.4rem;font-weight:900;color:var(--text-main);margin-bottom:8px;">انتهى الوقت! 🔔</h2>
+    <p id="alarm-alert-task-title" style="font-size:1.1rem;font-weight:800;color:var(--primary);margin-bottom:16px;">اسم المهمة</p>
+    <p style="font-size:0.88rem;color:var(--text-muted);margin-bottom:24px;">حان الوقت لإنجاز هذه المهمة الآن!</p>
+    
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button id="alarm-dismiss-done-btn" class="btn-primary" style="margin:0;">✅ إنجاز المهمة وإيقاف المنبه</button>
+      <button id="alarm-dismiss-only-btn" style="padding:14px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--surface-solid);color:var(--text-main);font-weight:700;cursor:pointer;">🔕 إيقاف المنبه فقط</button>
+    </div>
   </div>
 </div>
 

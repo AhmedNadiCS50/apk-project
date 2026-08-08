@@ -25,6 +25,11 @@ let pomoSeconds = 25 * 60;
 let pomoInterval = null;
 let isPomoRunning = false;
 
+// Per-Task Timer & Alarm State
+let activeTimerTaskId = null;
+let activeRingingTaskId = null;
+let alarmAudioLoopInterval = null;
+
 // =============================================
 //  IndexedDB + LocalStorage Dual-Engine Storage
 // =============================================
@@ -103,8 +108,8 @@ function initAlarmSystem() {
   alarmEnabled = localStorage.getItem(ALARM_KEY) === 'true';
   updateAlarmBtnUI();
 
-  // Check due tasks every 60 seconds
-  setInterval(checkDueAlarms, 60000);
+  // Check due tasks & active countdown timers every 1 second
+  setInterval(checkDueAlarmsAndTimers, 1000);
 }
 
 function updateAlarmBtnUI() {
@@ -175,20 +180,153 @@ function playAlarmRingtone() {
   } catch (e) { console.warn('Audio alarm sound error:', e); }
 }
 
-function checkDueAlarms() {
-  if (!alarmEnabled) return;
+function checkDueAlarmsAndTimers() {
+  const now = Date.now();
   const todayStr = new Date().toISOString().slice(0, 10);
-  const dueToday = tasks.filter(t => !t.completed && t.dueDate === todayStr);
+  const nowTimeStr = new Date().toTimeString().slice(0, 5); // "HH:MM"
 
-  if (dueToday.length > 0) {
-    playAlarmRingtone();
-    if (Notification.permission === 'granted') {
-      new Notification('🔔 تنبيه TaskFlow للمهام اليومية', {
-        body: `لديك ${dueToday.length} مهمة مستحقة اليوم: ${dueToday[0].title}`,
-        icon: 'icons/icon-192.png'
-      });
+  tasks.forEach(task => {
+    if (task.completed) return;
+
+    // 1. Check countdown timer target timestamp
+    if (task.timerTargetTimestamp && !task.alarmRingTriggered) {
+      const remainingMs = task.timerTargetTimestamp - now;
+
+      // Update badge element if visible
+      const badgeEl = document.getElementById(`countdown-${task.id}`);
+      if (badgeEl) {
+        if (remainingMs > 0) {
+          badgeEl.textContent = `⏱️ ${formatCountdownMs(remainingMs)}`;
+        } else {
+          badgeEl.textContent = `🔔 رنّ المنبه`;
+        }
+      }
+
+      if (remainingMs <= 0) {
+        task.alarmRingTriggered = true;
+        saveData();
+        triggerTaskAlarmPopup(task);
+      }
     }
+
+    // 2. Check scheduled due time (e.g. 14:30) for today
+    if (alarmEnabled && task.dueDate === todayStr && task.dueTime === nowTimeStr && !task.alarmRingTriggered) {
+      task.alarmRingTriggered = true;
+      saveData();
+      triggerTaskAlarmPopup(task);
+    }
+  });
+}
+
+function formatCountdownMs(ms) {
+  if (ms <= 0) return '00:00';
+  const totalSecs = Math.floor(ms / 1000);
+  const hrs = Math.floor(totalSecs / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60).toString().padStart(2, '0');
+  const secs = (totalSecs % 60).toString().padStart(2, '0');
+  if (hrs > 0) return `${hrs}:${mins}:${secs}`;
+  return `${mins}:${secs}`;
+}
+
+// Trigger ringing alarm popup modal + sound
+function triggerTaskAlarmPopup(task) {
+  activeRingingTaskId = task.id;
+  const titleEl = document.getElementById('alarm-alert-task-title');
+  if (titleEl) titleEl.textContent = task.title;
+
+  const modal = document.getElementById('alarm-alert-modal');
+  if (modal) modal.classList.add('open');
+
+  startAlarmAudioLoop();
+
+  if (navigator.vibrate) {
+    navigator.vibrate([500, 200, 500, 200, 500, 200, 500]);
   }
+
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('⏰ حان موعد المهمة!', {
+      body: `المهمة: ${task.title}`,
+      icon: 'icons/icon-192.png',
+      tag: `task-alarm-${task.id}`,
+      renotify: true
+    });
+  }
+}
+
+function startAlarmAudioLoop() {
+  stopAlarmAudioLoop();
+  playAlarmRingtone();
+  alarmAudioLoopInterval = setInterval(() => {
+    playAlarmRingtone();
+  }, 1400);
+}
+
+function stopAlarmAudioLoop() {
+  if (alarmAudioLoopInterval) {
+    clearInterval(alarmAudioLoopInterval);
+    alarmAudioLoopInterval = null;
+  }
+}
+
+function dismissAlarmPopup(action) {
+  stopAlarmAudioLoop();
+  const modal = document.getElementById('alarm-alert-modal');
+  if (modal) modal.classList.remove('open');
+
+  if (action === 'done' && activeRingingTaskId) {
+    toggleTask(activeRingingTaskId);
+  }
+  activeRingingTaskId = null;
+}
+
+// Timer Picker Modal Logic
+function openTimerModal(taskId) {
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) return;
+  activeTimerTaskId = taskId;
+
+  const titleEl = document.getElementById('timer-task-title');
+  if (titleEl) titleEl.textContent = `المهمة: "${task.title}"`;
+
+  const cancelBtn = document.getElementById('cancel-timer-btn');
+  if (cancelBtn) {
+    cancelBtn.style.display = (task.timerTargetTimestamp && !task.alarmRingTriggered) ? 'block' : 'none';
+  }
+
+  const modal = document.getElementById('timer-modal');
+  if (modal) modal.classList.add('open');
+}
+
+function closeTimerModal() {
+  const modal = document.getElementById('timer-modal');
+  if (modal) modal.classList.remove('open');
+  activeTimerTaskId = null;
+}
+
+function setTaskTimer(mins) {
+  if (!activeTimerTaskId || isNaN(mins) || mins <= 0) return;
+  const task = tasks.find(t => t.id === activeTimerTaskId);
+  if (!task) return;
+
+  task.timerTargetTimestamp = Date.now() + mins * 60 * 1000;
+  task.alarmRingTriggered = false;
+  saveData();
+  renderTasks();
+  closeTimerModal();
+  showToast(`⏱️ تم ضبط المنبه بعد ${mins} دقيقة للمهمة!`, 'success');
+}
+
+function cancelActiveTaskTimer() {
+  if (!activeTimerTaskId) return;
+  const task = tasks.find(t => t.id === activeTimerTaskId);
+  if (!task) return;
+
+  delete task.timerTargetTimestamp;
+  delete task.alarmRingTriggered;
+  saveData();
+  renderTasks();
+  closeTimerModal();
+  showToast('🔕 تم إلغاء المؤقت', 'info');
 }
 
 // =============================================
@@ -447,6 +585,9 @@ function renderTasks() {
   list.querySelectorAll('.custom-checkbox').forEach(cb => {
     cb.addEventListener('click', () => toggleTask(cb.dataset.id));
   });
+  list.querySelectorAll('.task-timer-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); openTimerModal(btn.dataset.id); });
+  });
   list.querySelectorAll('.task-delete-btn').forEach(btn => {
     btn.addEventListener('click', (e) => { e.stopPropagation(); deleteTask(btn.dataset.id); });
   });
@@ -472,6 +613,16 @@ function createTaskCard(task) {
     ? `<span class="due-time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="12" height="12" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg> ${formatDue(task.dueDate)}</span>`
     : '';
 
+  const timeText = task.dueTime ? `<span class="due-time">⏰ ${task.dueTime}</span>` : '';
+
+  let timerBadge = '';
+  if (task.timerTargetTimestamp && !task.completed && !task.alarmRingTriggered) {
+    const msLeft = task.timerTargetTimestamp - Date.now();
+    timerBadge = `<span class="tag-badge alarm-active" id="countdown-${task.id}">⏱️ ${formatCountdownMs(msLeft)}</span>`;
+  } else if (task.alarmRingTriggered && !task.completed) {
+    timerBadge = `<span class="tag-badge alarm-active" style="background:var(--danger-light);color:var(--danger);border-color:var(--danger)">🔔 رنّ المنبه</span>`;
+  }
+
   const subtasksBar = subtasksTotal > 0 ? `
     <div class="subtasks-bar-container">
       <div class="subtasks-bar-label">
@@ -496,10 +647,15 @@ function createTaskCard(task) {
             <span class="tag-badge ${prio.cls}">${prio.icon} ${prio.label}</span>
             <span class="tag-badge category">${cat.icon} ${cat.label}</span>
             ${dueText}
+            ${timeText}
+            ${timerBadge}
           </div>
           ${subtasksBar}
         </div>
         <div class="task-actions">
+          <button class="action-icon-btn task-timer-btn" data-id="${task.id}" title="ضبط منبه / مؤقت ⏰" aria-label="مؤقت">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </button>
           <button class="action-icon-btn task-detail-btn" data-id="${task.id}" title="التفاصيل" aria-label="تفاصيل">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="18" height="18" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           </button>
@@ -567,6 +723,7 @@ function addTask(data) {
     category: data.category || 'personal',
     priority: data.priority || 'medium',
     dueDate: data.dueDate || null,
+    dueTime: data.dueTime || null,
     completed: false,
     createdAt: new Date().toISOString(),
     subtasks: (data.subtasks || []).filter(s => s.text && s.text.trim()).map(s => ({ text: s.text.trim(), done: false })),
@@ -587,6 +744,7 @@ function updateTask(id, data) {
     category: data.category,
     priority: data.priority,
     dueDate: data.dueDate || null,
+    dueTime: data.dueTime || null,
     subtasks: (data.subtasks || []).filter(s => s.text && s.text.trim()).map(s => ({ text: s.text.trim(), done: false })),
   };
   saveData();
@@ -608,6 +766,8 @@ function openAddModal() {
   document.getElementById('form-submit-btn').textContent = '✅ حفظ المهمة';
   document.getElementById('task-form').reset();
   document.getElementById('task-id').value = '';
+  const timeInput = document.getElementById('task-time-input');
+  if (timeInput) timeInput.value = '';
   document.getElementById('subtasks-input-list').innerHTML = `
     <div class="subtask-input-item">
       <input type="text" class="form-control subtask-input" placeholder="مهمة فرعية 1..." />
@@ -630,6 +790,8 @@ function openEditModal(id) {
   document.getElementById('task-title-input').value = task.title;
   document.getElementById('task-desc-input').value = task.description || '';
   document.getElementById('task-date-input').value = task.dueDate || '';
+  const timeInput = document.getElementById('task-time-input');
+  if (timeInput) timeInput.value = task.dueTime || '';
   document.getElementById('task-category-input').value = task.category;
   const prioInput = document.querySelector(`input[name="priority"][value="${task.priority}"]`);
   if (prioInput) prioInput.checked = true;
@@ -1161,6 +1323,7 @@ document.addEventListener('DOMContentLoaded', () => {
       category: document.getElementById('task-category-input').value,
       priority: document.querySelector('input[name="priority"]:checked')?.value || 'medium',
       dueDate: document.getElementById('task-date-input').value,
+      dueTime: document.getElementById('task-time-input')?.value || null,
       subtasks: Array.from(document.querySelectorAll('.subtask-input')).map(i => ({ text: i.value })),
     };
 
@@ -1176,8 +1339,36 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape') {
       closeTaskModal();
       closeDetailModal();
+      closeTimerModal();
+      dismissAlarmPopup('only');
     }
   });
+
+  // Timer Modal Controls
+  document.querySelectorAll('.quick-timer-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setTaskTimer(parseInt(btn.dataset.mins));
+    });
+  });
+
+  document.getElementById('custom-timer-start-btn')?.addEventListener('click', () => {
+    const val = parseInt(document.getElementById('custom-timer-input').value);
+    if (!val || val <= 0) {
+      showToast('⚠️ يرجى كتابة عدد الدقائق بصورة صحيحة', 'error');
+      return;
+    }
+    setTaskTimer(val);
+  });
+
+  document.getElementById('cancel-timer-btn')?.addEventListener('click', cancelActiveTaskTimer);
+  document.getElementById('timer-close-btn')?.addEventListener('click', closeTimerModal);
+  document.getElementById('timer-modal')?.addEventListener('click', (e) => {
+    if (e.target === document.getElementById('timer-modal')) closeTimerModal();
+  });
+
+  // Alarm Ringing Popup Controls
+  document.getElementById('alarm-dismiss-done-btn')?.addEventListener('click', () => dismissAlarmPopup('done'));
+  document.getElementById('alarm-dismiss-only-btn')?.addEventListener('click', () => dismissAlarmPopup('only'));
 
   // Background Particles Canvas Initialization
   initParticleCanvas();
