@@ -309,7 +309,7 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .icon-btn {
@@ -337,6 +337,40 @@ body {
 
 .icon-btn:active {
   transform: scale(0.92);
+}
+
+/* Voice Microphone Pulsing Animation */
+.icon-btn.listening {
+  background: var(--danger-light);
+  color: var(--danger);
+  border-color: var(--danger);
+  animation: pulseMic 1.2s infinite ease-in-out;
+}
+
+@keyframes pulseMic {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+  50% { transform: scale(1.15); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+}
+
+/* Pomodoro Focus Timer Banner Widget */
+.pomodoro-banner-card {
+  background: linear-gradient(135deg, var(--surface-solid) 0%, var(--primary-light) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+}
+
+.pomodoro-timer-display {
+  font-size: 1.6rem;
+  font-weight: 900;
+  font-family: monospace;
+  color: var(--primary);
+  letter-spacing: 1px;
 }
 
 /* Dynamic Motivational Quote Banner Widget */

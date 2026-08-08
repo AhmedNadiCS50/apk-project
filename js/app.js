@@ -1,5 +1,5 @@
 // =============================================
-//  TaskFlow – Main Application Logic & Dual-Engine DB
+//  TaskFlow – Advanced Features & Alarm Logic
 // =============================================
 
 const DB_KEY = 'taskflow_data';
@@ -7,6 +7,7 @@ const THEME_KEY = 'taskflow_theme';
 const COLOR_THEME_KEY = 'taskflow_color_theme';
 const LAYOUT_MODE_KEY = 'taskflow_layout_mode';
 const STREAK_KEY = 'taskflow_streak';
+const ALARM_KEY = 'taskflow_alarm_enabled';
 
 // =============================================
 //  State
@@ -17,6 +18,12 @@ let editingTaskId = null;
 let activeView = 'tasks';
 let isGridMode = false;
 let dbInstance = null;
+let alarmEnabled = false;
+
+// Pomodoro Timer State
+let pomoSeconds = 25 * 60;
+let pomoInterval = null;
+let isPomoRunning = false;
 
 // =============================================
 //  IndexedDB + LocalStorage Dual-Engine Storage
@@ -43,10 +50,7 @@ function initIndexedDB() {
 }
 
 function saveData() {
-  // 1. LocalStorage Instant Sync
   localStorage.setItem(DB_KEY, JSON.stringify(tasks));
-
-  // 2. IndexedDB Deep Persistent Backup
   if (dbInstance) {
     try {
       const tx = dbInstance.transaction('tasks', 'readwrite');
@@ -57,7 +61,6 @@ function saveData() {
       console.warn('IndexedDB sync warning:', e);
     }
   }
-
   updateDatabaseInfoUI();
 }
 
@@ -69,7 +72,6 @@ function loadData() {
     tasks = [];
   }
 
-  // Backup load from IndexedDB if LocalStorage is empty
   initIndexedDB().then(db => {
     if (db && tasks.length === 0) {
       const tx = db.transaction('tasks', 'readonly');
@@ -95,7 +97,190 @@ function updateDatabaseInfoUI() {
 }
 
 // =============================================
-//  Streak Logic
+//  Alarm & Notifications System
+// =============================================
+function initAlarmSystem() {
+  alarmEnabled = localStorage.getItem(ALARM_KEY) === 'true';
+  updateAlarmBtnUI();
+
+  // Check due tasks every 60 seconds
+  setInterval(checkDueAlarms, 60000);
+}
+
+function updateAlarmBtnUI() {
+  const btn = document.getElementById('alarm-permission-btn');
+  const desc = document.getElementById('alarm-status-desc');
+  if (btn) {
+    if (alarmEnabled) {
+      btn.textContent = 'مفعّل 🔔';
+      btn.style.background = 'var(--primary)';
+      btn.style.color = '#ffffff';
+      if (desc) desc.textContent = 'المنبه والإشعارات مفعّلة بنجاح 🔊';
+    } else {
+      btn.textContent = 'تفعيل 🔔';
+      btn.style.background = 'var(--surface-solid)';
+      btn.style.color = 'var(--text-muted)';
+      if (desc) desc.textContent = 'اضغط للتفعيل والسماح بالتنبيهات الصوتية';
+    }
+  }
+}
+
+function toggleAlarmPermission() {
+  if (!('Notification' in window)) {
+    showToast('⚠️ متصفحك لا يدعم الإشعارات المباشرة', 'error');
+    return;
+  }
+
+  if (Notification.permission === 'granted') {
+    alarmEnabled = !alarmEnabled;
+    localStorage.setItem(ALARM_KEY, alarmEnabled);
+    updateAlarmBtnUI();
+    if (alarmEnabled) {
+      playAlarmRingtone();
+      showToast('🔊 تم تفعيل المنبه والإشعارات الصوتية!', 'success');
+    } else {
+      showToast('🔕 تم إيقاف المنبه', 'info');
+    }
+  } else {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        alarmEnabled = true;
+        localStorage.setItem(ALARM_KEY, 'true');
+        updateAlarmBtnUI();
+        playAlarmRingtone();
+        showToast('🔊 تم السماح بالإشعارات وتفعيل المنبه!', 'success');
+      } else {
+        showToast('⚠️ تم رفض الإذن. يرجى السماح بالإشعارات من إعدادات الهاتف', 'error');
+      }
+    });
+  }
+}
+
+function playAlarmRingtone() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    [440, 554.37, 659.25, 880].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'triangle';
+      gain.gain.setValueAtTime(0.3, now + i * 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.35);
+      osc.start(now + i * 0.18);
+      osc.stop(now + i * 0.18 + 0.4);
+    });
+  } catch (e) { console.warn('Audio alarm sound error:', e); }
+}
+
+function checkDueAlarms() {
+  if (!alarmEnabled) return;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const dueToday = tasks.filter(t => !t.completed && t.dueDate === todayStr);
+
+  if (dueToday.length > 0) {
+    playAlarmRingtone();
+    if (Notification.permission === 'granted') {
+      new Notification('🔔 تنبيه TaskFlow للمهام اليومية', {
+        body: `لديك ${dueToday.length} مهمة مستحقة اليوم: ${dueToday[0].title}`,
+        icon: 'icons/icon-192.png'
+      });
+    }
+  }
+}
+
+// =============================================
+//  Pomodoro Focus Timer
+// =============================================
+function updatePomoUI() {
+  const mins = Math.floor(pomoSeconds / 60).toString().padStart(2, '0');
+  const secs = (pomoSeconds % 60).toString().padStart(2, '0');
+  const display = document.getElementById('pomo-timer-display');
+  if (display) display.textContent = `${mins}:${secs}`;
+
+  const startBtn = document.getElementById('pomo-start-btn');
+  if (startBtn) startBtn.textContent = isPomoRunning ? '⏸️ إيقاف' : '▶️ ابدأ';
+}
+
+function togglePomoTimer() {
+  if (isPomoRunning) {
+    clearInterval(pomoInterval);
+    isPomoRunning = false;
+  } else {
+    isPomoRunning = true;
+    pomoInterval = setInterval(() => {
+      if (pomoSeconds > 0) {
+        pomoSeconds--;
+        updatePomoUI();
+      } else {
+        clearInterval(pomoInterval);
+        isPomoRunning = false;
+        playAlarmRingtone();
+        launchConfetti();
+        showToast('🎉 انتهت جلسة التركيز! خذ استراحة 5 دقائق', 'success');
+        pomoSeconds = 25 * 60;
+        updatePomoUI();
+      }
+    }, 1000);
+  }
+  updatePomoUI();
+}
+
+function resetPomoTimer() {
+  clearInterval(pomoInterval);
+  isPomoRunning = false;
+  pomoSeconds = 25 * 60;
+  updatePomoUI();
+}
+
+// =============================================
+//  Voice Speech Input (Arabic Web Speech API)
+// =============================================
+function startVoiceRecognition(targetInputId) {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    showToast('⚠️ الإدخال الصوتي غير مدعوم في هذا المتصفح', 'error');
+    return;
+  }
+
+  const recognition = new SpeechRec();
+  recognition.lang = 'ar-EG';
+  recognition.interimResults = false;
+
+  const btn = document.getElementById('voice-input-btn');
+  if (btn) btn.classList.add('listening');
+  showToast('🎙️ استمع الآن... تكلّم بعنصر المهمة', 'info');
+
+  recognition.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    if (text) {
+      if (targetInputId === 'task-title-input') {
+        document.getElementById('task-title-input').value = text;
+      } else {
+        openAddModal();
+        setTimeout(() => {
+          document.getElementById('task-title-input').value = text;
+        }, 300);
+      }
+      showToast(`🎤 تم التقاط النص: "${text}"`, 'success');
+    }
+  };
+
+  recognition.onerror = () => {
+    showToast('⚠️ لم يتم سماع الصوت بوضوح، حاول مجدداً', 'error');
+  };
+
+  recognition.onend = () => {
+    if (btn) btn.classList.remove('listening');
+  };
+
+  recognition.start();
+}
+
+// =============================================
+//  Streak & Helper Functions
 // =============================================
 function getStreakData() {
   try {
@@ -128,9 +313,6 @@ function isToday(dateStr) {
   return new Date(dateStr).toDateString() === new Date().toDateString();
 }
 
-// =============================================
-//  Greeting & Motivational Quote
-// =============================================
 function updateGreeting() {
   const hour = new Date().getHours();
   const greetings = {
@@ -165,9 +347,6 @@ function updateGreeting() {
   }
 }
 
-// =============================================
-//  Progress Ring & Dashboard Stats
-// =============================================
 function updateProgressUI() {
   const todayAll = tasks.filter(t => isToday(t.createdAt));
   const todayDone = todayAll.filter(t => t.completed);
@@ -183,7 +362,7 @@ function updateProgressUI() {
 
   const circle = document.getElementById('progress-circle');
   if (circle) {
-    const circumference = 2 * Math.PI * 19; // r=19
+    const circumference = 2 * Math.PI * 19;
     const offset = circumference * (1 - pct / 100);
     circle.style.strokeDasharray = circumference;
     circle.style.strokeDashoffset = offset;
@@ -193,7 +372,6 @@ function updateProgressUI() {
   const streakEl = document.getElementById('streak-count');
   if (streakEl) streakEl.textContent = `${streak} ${streak === 1 ? 'يوم' : 'أيام'}`;
 
-  // Quick summary chips
   const pendingCount = tasks.filter(t => !t.completed).length;
   const completedCount = tasks.filter(t => t.completed).length;
   const urgentCount = tasks.filter(t => !t.completed && t.priority === 'high').length;
@@ -208,9 +386,6 @@ function updateProgressUI() {
   if (urgentEl) urgentEl.textContent = urgentCount;
 }
 
-// =============================================
-//  Category Labels
-// =============================================
 const categoryMap = {
   work: { label: 'عمل', icon: '💼' },
   personal: { label: 'شخصي', icon: '👤' },
@@ -225,9 +400,6 @@ const priorityMap = {
   low: { label: 'منخفضة', icon: '☕', cls: 'priority-low' },
 };
 
-// =============================================
-//  Render Tasks
-// =============================================
 function getFilteredTasks() {
   return tasks.filter(task => {
     const matchCat = currentFilter.category === 'all' || task.category === currentFilter.category;
@@ -262,14 +434,13 @@ function renderTasks() {
       <div class="empty-state">
         <span class="empty-icon">📋</span>
         <h3>لا توجد مهام ${activeView === 'today' ? 'اليوم' : ''}</h3>
-        <p>اضغط على زر + أو اختر من الإضافة السريعة أعلاه 🚀</p>
+        <p>اضغط على زر + أو استخدم الميكروفون للإضافة الصوتيّة 🎤</p>
       </div>`;
     return;
   }
 
   list.innerHTML = filtered.map(task => createTaskCard(task)).join('');
 
-  // Attach events after rendering
   list.querySelectorAll('.custom-checkbox').forEach(cb => {
     cb.addEventListener('click', () => toggleTask(cb.dataset.id));
   });
@@ -353,9 +524,6 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-// =============================================
-//  Toggle Task / Subtask
-// =============================================
 function toggleTask(id) {
   const task = tasks.find(t => t.id === id);
   if (!task) return;
@@ -388,9 +556,6 @@ function checkAllDone() {
   }
 }
 
-// =============================================
-//  CRUD
-// =============================================
 function addTask(data) {
   const task = {
     id: `task_${Date.now()}_${Math.random().toString(36).slice(2)}`,
@@ -434,9 +599,6 @@ function deleteTask(id) {
   showToast('🗑️ تم حذف المهمة', 'info');
 }
 
-// =============================================
-//  Modal: Add / Edit
-// =============================================
 function openAddModal() {
   editingTaskId = null;
   document.getElementById('modal-title').textContent = 'إضافة مهمة جديدة';
@@ -466,7 +628,8 @@ function openEditModal(id) {
   document.getElementById('task-desc-input').value = task.description || '';
   document.getElementById('task-date-input').value = task.dueDate || '';
   document.getElementById('task-category-input').value = task.category;
-  document.querySelector(`input[name="priority"][value="${task.priority}"]`).checked = true;
+  const prioInput = document.querySelector(`input[name="priority"][value="${task.priority}"]`);
+  if (prioInput) prioInput.checked = true;
 
   const subList = document.getElementById('subtasks-input-list');
   subList.innerHTML = '';
@@ -489,9 +652,6 @@ function closeTaskModal() {
   editingTaskId = null;
 }
 
-// =============================================
-//  Modal: Task Detail
-// =============================================
 function openDetailModal(id) {
   const task = tasks.find(t => t.id === id);
   if (!task) return;
@@ -549,7 +709,7 @@ function closeDetailModal() {
 }
 
 // =============================================
-//  Stats View
+//  Stats & Weekly Canvas Chart
 // =============================================
 function renderStats() {
   const total = tasks.length;
@@ -569,6 +729,9 @@ function renderStats() {
       <div style="font-size:1.5rem;font-weight:800;color:${s.color};margin-bottom:4px">${s.value}</div>
       <div style="font-size:0.8rem;color:var(--text-muted);font-weight:600">${s.label}</div>
     </div>`).join('');
+
+  // Draw Canvas Weekly Bar Chart
+  drawWeeklyChart();
 
   // Category Breakdown
   const catBreakdown = document.getElementById('category-breakdown');
@@ -590,9 +753,62 @@ function renderStats() {
     }).join('')}`;
 }
 
-// =============================================
-//  View Management
-// =============================================
+function drawWeeklyChart() {
+  const canvas = document.getElementById('weekly-chart-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+
+  const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+
+  tasks.filter(t => t.completed).forEach(t => {
+    const dayIdx = new Date(t.createdAt).getDay();
+    counts[dayIdx]++;
+  });
+
+  const maxVal = Math.max(...counts, 4);
+  const width = rect.width;
+  const height = rect.height;
+  const padding = 25;
+  const chartHeight = height - padding * 2;
+  const barWidth = (width - padding * 2) / 7 - 12;
+
+  ctx.clearRect(0, 0, width, height);
+
+  days.forEach((day, i) => {
+    const x = padding + i * ((width - padding * 2) / 7) + 6;
+    const barH = (counts[i] / maxVal) * chartHeight;
+    const y = height - padding - barH;
+
+    // Bar background track
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.beginPath();
+    ctx.roundRect(x, padding, barWidth, chartHeight, 6);
+    ctx.fill();
+
+    // Active fill bar
+    const grad = ctx.createLinearGradient(0, y, 0, height - padding);
+    grad.addColorStop(0, '#0d9488');
+    grad.addColorStop(1, '#2dd4bf');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(x, y, barWidth, Math.max(barH, 4), 6);
+    ctx.fill();
+
+    // Labels
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '600 10px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(day, x + barWidth / 2, height - 6);
+    ctx.fillText(counts[i], x + barWidth / 2, y - 4);
+  });
+}
+
 function showView(view) {
   activeView = view;
   const mainContent = document.querySelector('.app-content');
@@ -612,6 +828,7 @@ function showView(view) {
     settingsView.style.display = 'block';
     fab.style.display = 'none';
     updateDatabaseInfoUI();
+    updateAlarmBtnUI();
   } else {
     mainContent.style.display = 'block';
     fab.style.display = 'flex';
@@ -619,9 +836,6 @@ function showView(view) {
   }
 }
 
-// =============================================
-//  Sound Effects (Web Audio API)
-// =============================================
 function playCompleteSound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -637,12 +851,9 @@ function playCompleteSound() {
       osc.start(ctx.currentTime + i * 0.12);
       osc.stop(ctx.currentTime + i * 0.12 + 0.35);
     });
-  } catch (e) { /* Audio not supported */ }
+  } catch (e) { }
 }
 
-// =============================================
-//  Confetti
-// =============================================
 function launchConfetti() {
   const canvas = document.getElementById('confetti-canvas');
   const ctx = canvas.getContext('2d');
@@ -688,9 +899,6 @@ function launchConfetti() {
   draw();
 }
 
-// =============================================
-//  Toast Notifications
-// =============================================
 function showToast(msg, type = 'info') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
@@ -703,9 +911,6 @@ function showToast(msg, type = 'info') {
   setTimeout(() => toast.remove(), 3000);
 }
 
-// =============================================
-//  Theme & Color Theme Switching
-// =============================================
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem(THEME_KEY, theme);
@@ -738,9 +943,6 @@ function applyColorTheme(colorTheme) {
   }
 }
 
-// =============================================
-//  Export & Import JSON Backup Data
-// =============================================
 function exportData() {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tasks, null, 2));
   const dlAnchor = document.createElement('a');
@@ -790,6 +992,7 @@ function clearCompletedTasks() {
 // =============================================
 document.addEventListener('DOMContentLoaded', () => {
   loadData();
+  initAlarmSystem();
 
   const savedTheme = localStorage.getItem(THEME_KEY) || 'dark';
   applyTheme(savedTheme);
@@ -800,11 +1003,23 @@ document.addEventListener('DOMContentLoaded', () => {
   isGridMode = localStorage.getItem(LAYOUT_MODE_KEY) === 'true';
 
   updateGreeting();
+  updatePomoUI();
 
   renderTasks();
   updateProgressUI();
 
-  // Template Quick Chips Handler (1-tap add task)
+  // Pomodoro Controls
+  document.getElementById('pomo-start-btn')?.addEventListener('click', togglePomoTimer);
+  document.getElementById('pomo-reset-btn')?.addEventListener('click', resetPomoTimer);
+
+  // Voice Input Buttons
+  document.getElementById('voice-input-btn')?.addEventListener('click', () => startVoiceRecognition('search-input'));
+  document.getElementById('modal-mic-btn')?.addEventListener('click', () => startVoiceRecognition('task-title-input'));
+
+  // Alarm Permission Button in Settings
+  document.getElementById('alarm-permission-btn')?.addEventListener('click', toggleAlarmPermission);
+
+  // Template Quick Chips
   document.querySelectorAll('.template-chip').forEach(btn => {
     btn.addEventListener('click', () => {
       const title = btn.dataset.template;
@@ -829,7 +1044,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // FAB – Add Task
   document.getElementById('fab-btn').addEventListener('click', openAddModal);
 
-  // Theme Toggle (Header & Settings)
+  // Theme Toggle
   const toggleThemeHandler = () => {
     const current = document.documentElement.getAttribute('data-theme');
     applyTheme(current === 'dark' ? 'light' : 'dark');
@@ -845,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Export & Import Backup Handlers
+  // Export & Import Backup
   document.getElementById('export-data-btn')?.addEventListener('click', exportData);
 
   const importBtn = document.getElementById('import-trigger-btn');
@@ -903,19 +1118,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Modal: Close
+  // Modal Close
   document.getElementById('modal-close-btn').addEventListener('click', closeTaskModal);
   document.getElementById('task-modal').addEventListener('click', (e) => {
     if (e.target === document.getElementById('task-modal')) closeTaskModal();
   });
 
-  // Modal: Detail Close
   document.getElementById('detail-close-btn').addEventListener('click', closeDetailModal);
   document.getElementById('detail-modal').addEventListener('click', (e) => {
     if (e.target === document.getElementById('detail-modal')) closeDetailModal();
   });
 
-  // Add Subtask Input
+  // Subtask Add
   document.getElementById('add-subtask-btn').addEventListener('click', () => {
     const count = document.querySelectorAll('.subtask-input').length + 1;
     document.getElementById('subtasks-input-list').insertAdjacentHTML('beforeend', `
@@ -955,7 +1169,6 @@ document.addEventListener('DOMContentLoaded', () => {
     closeTaskModal();
   });
 
-  // Keyboard: close modals on Escape
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeTaskModal();
@@ -964,9 +1177,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// =============================================
-//  Service Worker Registration
-// =============================================
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js')

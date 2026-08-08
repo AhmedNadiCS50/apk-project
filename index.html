@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="css/styles.css?v=5" />
+  <link rel="stylesheet" href="css/styles.css?v=6" />
 </head>
 <body>
 
@@ -37,12 +37,31 @@
         <p id="date-text">جارٍ تحميل التاريخ...</p>
       </div>
       <div class="header-actions">
+        <!-- Voice Search/Add Button -->
+        <button class="icon-btn" id="voice-input-btn" title="إضافة/بحث بالصوت" aria-label="صوت">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </button>
         <button class="icon-btn" id="search-toggle-btn" title="بحث" aria-label="بحث">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         </button>
         <button class="icon-btn" id="theme-toggle-btn" title="تبديل الوضع" aria-label="تبديل الوضع">
           <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
+      </div>
+    </div>
+
+    <!-- Pomodoro Focus Timer Banner Widget -->
+    <div class="pomodoro-banner-card" id="pomodoro-card">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:1.5rem;">🍅</span>
+        <div>
+          <span style="font-size:0.75rem;color:var(--text-muted);font-weight:700;display:block;" id="pomo-status-text">مؤقت التركيز (بومودورو)</span>
+          <span class="pomodoro-timer-display" id="pomo-timer-display">25:00</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="chip-btn" id="pomo-start-btn" style="padding:6px 12px;font-size:0.8rem;">▶️ ابدأ</button>
+        <button class="chip-btn" id="pomo-reset-btn" style="padding:6px 10px;font-size:0.8rem;">🔄</button>
       </div>
     </div>
 
@@ -144,6 +163,13 @@
   <!-- STATS VIEW (hidden panel) -->
   <div id="stats-view" style="display:none;padding:18px 20px;">
     <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:16px;color:var(--text-main);">📊 إحصائيات الأداء</h2>
+    
+    <!-- Weekly Productivity Chart Card -->
+    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
+      <p style="font-size:0.9rem;font-weight:700;margin-bottom:10px;color:var(--text-main);">📈 معدل الإنجاز الأسبوعي</p>
+      <canvas id="weekly-chart-canvas" height="150" style="width:100%;"></canvas>
+    </div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="stats-grid"></div>
     <div style="margin-top:22px;" id="category-breakdown"></div>
   </div>
@@ -152,6 +178,15 @@
   <div id="settings-view" style="display:none;padding:18px 20px;">
     <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:18px;color:var(--text-main);">⚙️ الإعدادات وحالة التخزين</h2>
     
+    <!-- Notification & Alarm Permission Card -->
+    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow-sm);">
+      <div>
+        <p style="font-size:0.9rem;font-weight:700;color:var(--text-main);">🔔 المنبه والإشعارات الصوتية</p>
+        <p style="font-size:0.78rem;color:var(--text-muted);" id="alarm-status-desc">تنبيه صوتي وإشعار عند استحقاق المهام</p>
+      </div>
+      <button class="chip-btn" id="alarm-permission-btn" style="margin:0;">تفعيل 🔔</button>
+    </div>
+
     <!-- Database Health & Status Card -->
     <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
       <p style="font-size:0.9rem;font-weight:700;margin-bottom:4px;color:var(--text-main);">🗄️ حالة قاعدة البيانات والتخزين المحفوظ</p>
@@ -237,7 +272,12 @@
 
       <div class="form-group">
         <label for="task-title-input">عنوان المهمة *</label>
-        <input type="text" id="task-title-input" class="form-control" placeholder="ماذا تريد أن تفعل؟" required maxlength="120" />
+        <div style="position:relative;">
+          <input type="text" id="task-title-input" class="form-control" placeholder="ماذا تريد أن تفعل؟ (أو اضغط الميكروفون للحديث)" required maxlength="120" style="padding-left:44px;" />
+          <button type="button" id="modal-mic-btn" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--primary);cursor:pointer;padding:6px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
+        </div>
       </div>
 
       <div class="form-group">
@@ -317,6 +357,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=5"></script>
+<script src="js/app.js?v=6"></script>
 </body>
 </html>
