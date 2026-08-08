@@ -362,15 +362,15 @@ function updateProgressUI() {
 
   const circle = document.getElementById('progress-circle');
   if (circle) {
-    const circumference = 2 * Math.PI * 19;
+    const circumference = 2 * Math.PI * 19; // r=19 → ~119.4
     const offset = circumference * (1 - pct / 100);
-    circle.style.strokeDasharray = circumference;
-    circle.style.strokeDashoffset = offset;
+    circle.setAttribute('stroke-dasharray', circumference.toFixed(1));
+    circle.setAttribute('stroke-dashoffset', offset.toFixed(1));
   }
 
   const streak = updateStreak();
   const streakEl = document.getElementById('streak-count');
-  if (streakEl) streakEl.textContent = `${streak} ${streak === 1 ? 'يوم' : 'أيام'}`;
+  if (streakEl) streakEl.textContent = streak;
 
   const pendingCount = tasks.filter(t => !t.completed).length;
   const completedCount = tasks.filter(t => t.completed).length;

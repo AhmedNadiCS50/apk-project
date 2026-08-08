@@ -13,23 +13,17 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="css/styles.css?v=6" />
+  <link rel="stylesheet" href="css/styles.css?v=7" />
 </head>
 <body>
 
-<!-- Confetti Canvas -->
 <canvas id="confetti-canvas"></canvas>
-
-<!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>
-
-<!-- Hidden File Input for Importing Data -->
 <input type="file" id="import-file-input" accept=".json" style="display:none;" />
 
-<!-- ========== APP CONTAINER ========== -->
 <div class="app-container">
 
-  <!-- APP HEADER -->
+  <!-- ====== COMPACT STICKY HEADER ====== -->
   <header class="app-header">
     <div class="header-top">
       <div class="user-welcome">
@@ -37,8 +31,7 @@
         <p id="date-text">جارٍ تحميل التاريخ...</p>
       </div>
       <div class="header-actions">
-        <!-- Voice Search/Add Button -->
-        <button class="icon-btn" id="voice-input-btn" title="إضافة/بحث بالصوت" aria-label="صوت">
+        <button class="icon-btn" id="voice-input-btn" title="إضافة بالصوت" aria-label="صوت">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
         </button>
         <button class="icon-btn" id="search-toggle-btn" title="بحث" aria-label="بحث">
@@ -50,187 +43,204 @@
       </div>
     </div>
 
-    <!-- Pomodoro Focus Timer Banner Widget -->
-    <div class="pomodoro-banner-card" id="pomodoro-card">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span style="font-size:1.5rem;">🍅</span>
-        <div>
-          <span style="font-size:0.75rem;color:var(--text-muted);font-weight:700;display:block;" id="pomo-status-text">مؤقت التركيز (بومودورو)</span>
-          <span class="pomodoro-timer-display" id="pomo-timer-display">25:00</span>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;">
-        <button class="chip-btn" id="pomo-start-btn" style="padding:6px 12px;font-size:0.8rem;">▶️ ابدأ</button>
-        <button class="chip-btn" id="pomo-reset-btn" style="padding:6px 10px;font-size:0.8rem;">🔄</button>
-      </div>
-    </div>
-
-    <!-- Motivational Quote Banner -->
-    <div class="quote-banner">
-      <span class="quote-icon">💡</span>
-      <span id="quote-text">خطوة واحدة صغيرة كل يوم تصنع فارقاً كبيراً!</span>
-    </div>
-
-    <!-- Dual Grid Dashboard Banner -->
-    <div class="dashboard-widgets-grid">
-      <div class="widget-card streak-widget">
-        <div class="streak-info">
-          <span class="streak-flame">🔥</span>
-          <div class="streak-text">
-            <span>سلسلة الإنجاز</span>
-            <strong id="streak-count">0 أيام</strong>
-          </div>
-        </div>
-      </div>
-      <div class="widget-card">
-        <div style="text-align:right">
-          <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:2px;font-weight:600">منجز اليوم</div>
-          <div style="font-size:1.1rem;font-weight:800;color:var(--text-main)" id="today-summary">0 / 0</div>
-        </div>
-        <div class="progress-ring-container">
-          <svg class="progress-ring" viewBox="0 0 48 48">
-            <circle class="bg-circle" cx="24" cy="24" r="19"/>
-            <circle class="progress-circle" id="progress-circle" cx="24" cy="24" r="19"/>
-          </svg>
-          <span class="progress-value" id="progress-value">0%</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Summary Quick Chips Row -->
-    <div class="summary-chips-row">
-      <div class="summary-chip-card">
-        <span>⏳ المتبقي</span>
-        <strong id="pending-chip-count">0</strong>
-      </div>
-      <div class="summary-chip-card">
-        <span>✅ المكتمل</span>
-        <strong id="completed-chip-count">0</strong>
-      </div>
-      <div class="summary-chip-card">
-        <span>🔥 العاجل</span>
-        <strong id="urgent-chip-count">0</strong>
-      </div>
-    </div>
-
     <!-- Search Bar (hidden by default) -->
-    <div class="search-box" id="search-box" style="display:none; margin-top:14px;">
+    <div class="search-box" id="search-box" style="display:none; margin-top:12px;">
       <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input type="text" id="search-input" class="form-control" placeholder="ابحث في مهامك..." aria-label="بحث في المهام" style="padding-right:14px;padding-left:42px;margin-bottom:0;" />
     </div>
   </header>
 
-  <!-- APP MAIN CONTENT -->
+  <!-- ====== SCROLLABLE MAIN CONTENT ====== -->
   <main class="app-content">
 
-    <!-- Quick Add Templates Row -->
-    <div class="templates-row" title="إضافة سريعة بنقرة واحدة">
-      <button class="template-chip" data-template="قراءة 30 دقيقة" data-category="study">📚 قراءة 30 دقيقة</button>
-      <button class="template-chip" data-template="شرب 2 لتر ماء" data-category="health">💧 شرب 2 لتر ماء</button>
-      <button class="template-chip" data-template="تمرين رياضي" data-category="health">🏋️ تمرين رياضي</button>
-      <button class="template-chip" data-template="مراجعة المهام اليومية" data-category="work">💻 مراجعة المهام</button>
-    </div>
+    <!-- === DASHBOARD SECTION === -->
+    <section class="dashboard-section" id="dashboard-section">
 
-    <!-- Category Filter Chips -->
-    <div class="categories-filter" id="categories-filter" role="tablist" aria-label="التصنيفات">
-      <button class="chip-btn active" data-category="all" role="tab">الكل</button>
-      <button class="chip-btn" data-category="work" role="tab">💼 عمل</button>
-      <button class="chip-btn" data-category="personal" role="tab">👤 شخصي</button>
-      <button class="chip-btn" data-category="study" role="tab">📚 دراسة</button>
-      <button class="chip-btn" data-category="health" role="tab">🏋️ صحة</button>
-      <button class="chip-btn" data-category="shopping" role="tab">🛒 تسوق</button>
-    </div>
-
-    <!-- Status Tabs & Layout Mode Switcher -->
-    <div class="status-bar-header">
-      <div class="status-tabs" role="tablist" aria-label="حالة المهام">
-        <button class="tab-btn active" data-status="all" role="tab">الكل</button>
-        <button class="tab-btn" data-status="pending" role="tab">قيد التنفيذ</button>
-        <button class="tab-btn" data-status="completed" role="tab">مكتملة</button>
+      <!-- Row 1: 3 Stat Cards horizontal -->
+      <div class="stat-cards-row">
+        <div class="stat-card accent-streak">
+          <div class="stat-icon">🔥</div>
+          <div class="stat-body">
+            <span class="stat-label">سلسلة الإنجاز</span>
+            <strong class="stat-value" id="streak-count">0</strong>
+            <span class="stat-sub">أيام</span>
+          </div>
+        </div>
+        <div class="stat-card accent-progress" id="progress-card">
+          <div class="stat-progress-ring">
+            <svg viewBox="0 0 48 48" width="52" height="52">
+              <circle class="bg-circle" cx="24" cy="24" r="19" fill="transparent" stroke-width="5"/>
+              <circle class="progress-circle" id="progress-circle" cx="24" cy="24" r="19" fill="transparent" stroke-width="5" stroke-dasharray="132" stroke-dashoffset="132" stroke-linecap="round" transform="rotate(-90 24 24)"/>
+            </svg>
+            <span class="stat-ring-val" id="progress-value">0%</span>
+          </div>
+          <div class="stat-body">
+            <span class="stat-label">منجز اليوم</span>
+            <strong class="stat-value" id="today-summary">0/0</strong>
+          </div>
+        </div>
+        <div class="stat-card accent-urgent">
+          <div class="stat-icon">⚡</div>
+          <div class="stat-body">
+            <span class="stat-label">عاجل</span>
+            <strong class="stat-value" id="urgent-chip-count">0</strong>
+            <span class="stat-sub">مهام</span>
+          </div>
+        </div>
       </div>
-      <button class="view-toggle-btn" id="layout-toggle-btn" title="تغيير طريقة العرض (شبكة / قائمة)" aria-label="طريقة العرض">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-      </button>
-    </div>
 
-    <!-- Tasks List -->
-    <div class="tasks-list" id="tasks-list" aria-label="قائمة المهام">
-      <!-- Tasks rendered by JS -->
-    </div>
+      <!-- Row 2: Pomodoro + Quote side by side -->
+      <div class="dual-row">
+        <!-- Pomodoro compact card -->
+        <div class="pomo-card">
+          <div class="pomo-header">
+            <span>🍅</span>
+            <span class="pomo-timer-txt" id="pomo-timer-display">25:00</span>
+          </div>
+          <p class="pomo-label" id="pomo-status-text">مؤقت التركيز</p>
+          <div class="pomo-btns">
+            <button class="pomo-btn-main" id="pomo-start-btn">▶️</button>
+            <button class="pomo-btn-reset" id="pomo-reset-btn">🔄</button>
+          </div>
+        </div>
+
+        <!-- Quote + pending card -->
+        <div class="info-side-card">
+          <div class="quote-line">
+            <span style="font-size:1.1rem">💡</span>
+            <span id="quote-text" class="quote-txt">خطوة صغيرة كل يوم تصنع فارقاً كبيراً!</span>
+          </div>
+          <div style="height:1px;background:var(--border);margin:10px 0;"></div>
+          <div class="pending-info-row">
+            <div class="pending-chip">
+              <span>⏳</span>
+              <div>
+                <strong id="pending-chip-count">0</strong>
+                <span>متبقية</span>
+              </div>
+            </div>
+            <div class="pending-chip">
+              <span>✅</span>
+              <div>
+                <strong id="completed-chip-count">0</strong>
+                <span>مكتملة</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Quick Add Templates horizontal scroll -->
+      <div class="templates-row">
+        <button class="template-chip" data-template="قراءة 30 دقيقة" data-category="study">📚 قراءة</button>
+        <button class="template-chip" data-template="شرب 2 لتر ماء" data-category="health">💧 ماء</button>
+        <button class="template-chip" data-template="تمرين رياضي" data-category="health">🏋️ تمرين</button>
+        <button class="template-chip" data-template="مراجعة المهام اليومية" data-category="work">💻 مراجعة</button>
+        <button class="template-chip" data-template="تأمل 10 دقائق" data-category="health">🧘 تأمل</button>
+        <button class="template-chip" data-template="مراسلة رسائل البريد" data-category="work">📧 بريد</button>
+      </div>
+    </section>
+
+    <!-- === TASKS SECTION === -->
+    <section class="tasks-section">
+
+      <!-- Category Filter Chips -->
+      <div class="categories-filter" id="categories-filter" role="tablist">
+        <button class="chip-btn active" data-category="all" role="tab">الكل</button>
+        <button class="chip-btn" data-category="work" role="tab">💼 عمل</button>
+        <button class="chip-btn" data-category="personal" role="tab">👤 شخصي</button>
+        <button class="chip-btn" data-category="study" role="tab">📚 دراسة</button>
+        <button class="chip-btn" data-category="health" role="tab">🏋️ صحة</button>
+        <button class="chip-btn" data-category="shopping" role="tab">🛒 تسوق</button>
+      </div>
+
+      <!-- Status Tabs + Layout Toggle -->
+      <div class="status-bar-header">
+        <div class="status-tabs">
+          <button class="tab-btn active" data-status="all">الكل</button>
+          <button class="tab-btn" data-status="pending">قيد التنفيذ</button>
+          <button class="tab-btn" data-status="completed">مكتملة</button>
+        </div>
+        <button class="view-toggle-btn" id="layout-toggle-btn" title="تبديل العرض" aria-label="طريقة العرض">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </button>
+      </div>
+
+      <!-- Tasks List -->
+      <div class="tasks-list" id="tasks-list" aria-label="قائمة المهام"></div>
+
+    </section>
 
   </main>
 
-  <!-- STATS VIEW (hidden panel) -->
+  <!-- ====== STATS VIEW ====== -->
   <div id="stats-view" style="display:none;padding:18px 20px;">
-    <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:16px;color:var(--text-main);">📊 إحصائيات الأداء</h2>
-    
-    <!-- Weekly Productivity Chart Card -->
+    <h2 style="font-size:1.15rem;font-weight:800;margin-bottom:16px;color:var(--text-main);">📊 إحصائيات الأداء</h2>
     <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
-      <p style="font-size:0.9rem;font-weight:700;margin-bottom:10px;color:var(--text-main);">📈 معدل الإنجاز الأسبوعي</p>
-      <canvas id="weekly-chart-canvas" height="150" style="width:100%;"></canvas>
+      <p style="font-size:0.88rem;font-weight:700;margin-bottom:10px;color:var(--text-main);">📈 معدل الإنجاز الأسبوعي</p>
+      <canvas id="weekly-chart-canvas" height="150" style="width:100%;display:block;"></canvas>
     </div>
-
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="stats-grid"></div>
     <div style="margin-top:22px;" id="category-breakdown"></div>
   </div>
 
-  <!-- SETTINGS VIEW (hidden panel) -->
+  <!-- ====== SETTINGS VIEW ====== -->
   <div id="settings-view" style="display:none;padding:18px 20px;">
-    <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:18px;color:var(--text-main);">⚙️ الإعدادات وحالة التخزين</h2>
-    
-    <!-- Notification & Alarm Permission Card -->
-    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow-sm);">
-      <div>
-        <p style="font-size:0.9rem;font-weight:700;color:var(--text-main);">🔔 المنبه والإشعارات الصوتية</p>
-        <p style="font-size:0.78rem;color:var(--text-muted);" id="alarm-status-desc">تنبيه صوتي وإشعار عند استحقاق المهام</p>
-      </div>
-      <button class="chip-btn" id="alarm-permission-btn" style="margin:0;">تفعيل 🔔</button>
-    </div>
+    <h2 style="font-size:1.15rem;font-weight:800;margin-bottom:18px;color:var(--text-main);">⚙️ الإعدادات</h2>
 
-    <!-- Database Health & Status Card -->
-    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
-      <p style="font-size:0.9rem;font-weight:700;margin-bottom:4px;color:var(--text-main);">🗄️ حالة قاعدة البيانات والتخزين المحفوظ</p>
-      <p style="font-size:0.8rem;color:var(--primary);font-weight:600;margin-bottom:10px;">⚡ محرك مزدوج: IndexedDB + LocalStorage مفعّل</p>
-      <div style="font-size:0.78rem;color:var(--text-muted);display:flex;flex-direction:column;gap:4px;">
-        <span>🔒 بياناتك محفوظة بأمان على هاتفك ولا تضيع عند إغلاق التطبيق.</span>
-        <span id="db-task-count-info">عدد المهام المحفوظة: 0 مهمة</span>
+    <!-- Notifications / Alarm -->
+    <div class="settings-card">
+      <div class="settings-card-row">
+        <div>
+          <p class="settings-title">🔔 المنبه والإشعارات</p>
+          <p class="settings-desc" id="alarm-status-desc">تنبيه صوتي عند استحقاق المهام</p>
+        </div>
+        <button class="chip-btn" id="alarm-permission-btn" style="margin:0;white-space:nowrap;">تفعيل 🔔</button>
       </div>
     </div>
 
-    <!-- Theme Palette Selector -->
-    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
-      <p style="font-size:0.9rem;font-weight:700;margin-bottom:4px;color:var(--text-main);">🎨 ثيم الألوان المفضّل</p>
-      <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:12px;">اختر اللون المفضل لتطبيقك</p>
+    <!-- Dark / Light Mode -->
+    <div class="settings-card">
+      <div class="settings-card-row">
+        <div>
+          <p class="settings-title">🌙 وضع الشاشة</p>
+          <p class="settings-desc">تبديل بين الداكن والفاتح</p>
+        </div>
+        <button class="chip-btn" id="settings-theme-btn" style="margin:0;">تبديل 🌗</button>
+      </div>
+    </div>
+
+    <!-- Color Themes -->
+    <div class="settings-card">
+      <p class="settings-title" style="margin-bottom:12px;">🎨 ثيم الألوان</p>
       <div class="theme-swatches-grid">
-        <button class="theme-swatch teal active" data-color="teal" title="Teal Breeze" aria-label="تركوازي"></button>
-        <button class="theme-swatch purple" data-color="purple" title="Cyber Purple" aria-label="بنفسجي"></button>
-        <button class="theme-swatch cobalt" data-color="cobalt" title="Midnight Cobalt" aria-label="أزرق"></button>
-        <button class="theme-swatch sunset" data-color="sunset" title="Sunset Crimson" aria-label="برتقالي"></button>
-        <button class="theme-swatch emerald" data-color="emerald" title="Emerald Forest" aria-label="زمردي"></button>
+        <button class="theme-swatch teal active" data-color="teal" title="Teal Breeze"></button>
+        <button class="theme-swatch purple" data-color="purple" title="Cyber Purple"></button>
+        <button class="theme-swatch cobalt" data-color="cobalt" title="Midnight Cobalt"></button>
+        <button class="theme-swatch sunset" data-color="sunset" title="Sunset Crimson"></button>
+        <button class="theme-swatch emerald" data-color="emerald" title="Emerald Forest"></button>
       </div>
     </div>
 
-    <!-- Mode Toggle Option -->
-    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow-sm);">
-      <div>
-        <p style="font-size:0.9rem;font-weight:700;color:var(--text-main);">🌙 الوضع الليلي / الفاتح</p>
-        <p style="font-size:0.78rem;color:var(--text-muted);">تبديل بين الداكن والفاتح</p>
-      </div>
-      <button class="chip-btn" id="settings-theme-btn" style="margin:0;">تبديل 🌗</button>
+    <!-- Database Info -->
+    <div class="settings-card">
+      <p class="settings-title">🗄️ حالة التخزين</p>
+      <p class="settings-desc" style="color:var(--primary);font-weight:600;margin-top:4px;">⚡ IndexedDB + LocalStorage مفعّل</p>
+      <p class="settings-desc" id="db-task-count-info" style="margin-top:4px;">عدد المهام: 0</p>
     </div>
 
-    <!-- Data Management & Backup Import/Export -->
-    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);">
-      <p style="font-size:0.9rem;font-weight:700;margin-bottom:12px;color:var(--text-main);">💾 النسخ الاحتياطي واسترجاع البيانات</p>
+    <!-- Backup -->
+    <div class="settings-card">
+      <p class="settings-title" style="margin-bottom:12px;">💾 النسخ الاحتياطي</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-        <button id="export-data-btn" class="chip-btn" style="justify-content:center;padding:12px;">📥 تصدير (JSON)</button>
-        <button id="import-trigger-btn" class="chip-btn" style="justify-content:center;padding:12px;">📤 استيراد (JSON)</button>
+        <button id="export-data-btn" class="chip-btn" style="justify-content:center;padding:12px;">📥 تصدير</button>
+        <button id="import-trigger-btn" class="chip-btn" style="justify-content:center;padding:12px;">📤 استيراد</button>
       </div>
-      <button id="clear-completed-btn" class="chip-btn" style="width:100%;justify-content:center;padding:12px;color:var(--danger);border-color:var(--danger-light);">🧹 مسح المهام المكتملة</button>
+      <button id="clear-completed-btn" class="chip-btn" style="width:100%;justify-content:center;padding:12px;color:var(--danger);border-color:var(--danger-light);">🧹 مسح المكتملة</button>
     </div>
   </div>
 
-  <!-- FAB Add Task Button -->
+  <!-- FAB -->
   <button class="fab-btn" id="fab-btn" aria-label="إضافة مهمة جديدة">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="26" height="26" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
   </button>
@@ -242,7 +252,7 @@
       <span>المهام</span>
     </button>
     <button class="nav-item" data-view="today" aria-label="اليوم">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       <span>اليوم</span>
     </button>
     <button class="nav-item" data-view="stats" aria-label="الإحصائيات">
@@ -266,25 +276,21 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-
     <form id="task-form" novalidate>
       <input type="hidden" id="task-id" value="" />
-
       <div class="form-group">
         <label for="task-title-input">عنوان المهمة *</label>
         <div style="position:relative;">
-          <input type="text" id="task-title-input" class="form-control" placeholder="ماذا تريد أن تفعل؟ (أو اضغط الميكروفون للحديث)" required maxlength="120" style="padding-left:44px;" />
+          <input type="text" id="task-title-input" class="form-control" placeholder="ماذا تريد أن تفعل؟" required maxlength="120" style="padding-left:44px;" />
           <button type="button" id="modal-mic-btn" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--primary);cursor:pointer;padding:6px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="20" height="20" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
           </button>
         </div>
       </div>
-
       <div class="form-group">
         <label for="task-desc-input">الوصف (اختياري)</label>
-        <textarea id="task-desc-input" class="form-control" placeholder="تفاصيل إضافية..." rows="2" style="resize:vertical"></textarea>
+        <textarea id="task-desc-input" class="form-control" placeholder="تفاصيل..." rows="2" style="resize:vertical"></textarea>
       </div>
-
       <div class="form-row">
         <div class="form-group">
           <label for="task-category-input">التصنيف</label>
@@ -296,37 +302,25 @@
             <option value="shopping">🛒 تسوق</option>
           </select>
         </div>
-
         <div class="form-group">
           <label for="task-date-input">تاريخ الاستحقاق</label>
           <input type="date" id="task-date-input" class="form-control" />
         </div>
       </div>
-
       <div class="form-group">
         <label>الأولوية</label>
         <div class="options-grid">
-          <label class="radio-card">
-            <input type="radio" name="priority" value="high" id="prio-high" />
-            🔥 عالية
-          </label>
-          <label class="radio-card">
-            <input type="radio" name="priority" value="medium" id="prio-medium" checked />
-            ⚡ متوسطة
-          </label>
-          <label class="radio-card">
-            <input type="radio" name="priority" value="low" id="prio-low" />
-            ☕ منخفضة
-          </label>
+          <label class="radio-card"><input type="radio" name="priority" value="high" id="prio-high" />🔥 عالية</label>
+          <label class="radio-card"><input type="radio" name="priority" value="medium" id="prio-medium" checked />⚡ متوسطة</label>
+          <label class="radio-card"><input type="radio" name="priority" value="low" id="prio-low" />☕ منخفضة</label>
         </div>
       </div>
-
       <div class="form-group">
-        <label>مهام فرعية (اختياري)</label>
+        <label>مهام فرعية</label>
         <div class="subtasks-input-list" id="subtasks-input-list">
           <div class="subtask-input-item">
             <input type="text" class="form-control subtask-input" placeholder="مهمة فرعية 1..." />
-            <button type="button" class="action-icon-btn delete" onclick="this.parentElement.remove()" aria-label="حذف">
+            <button type="button" class="action-icon-btn delete" onclick="this.parentElement.remove()">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" width="16" height="16" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
@@ -336,16 +330,13 @@
           إضافة مهمة فرعية
         </button>
       </div>
-
-      <button type="submit" class="btn-primary" id="form-submit-btn">
-        ✅ حفظ المهمة
-      </button>
+      <button type="submit" class="btn-primary" id="form-submit-btn">✅ حفظ المهمة</button>
     </form>
   </div>
 </div>
 
-<!-- ========== TASK DETAIL MODAL ========== -->
-<div class="modal-overlay" id="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detail-modal" role="dialog" aria-modal="true">
   <div class="modal-card">
     <div class="modal-header">
       <h2 id="detail-title">تفاصيل المهمة</h2>
@@ -357,6 +348,6 @@
   </div>
 </div>
 
-<script src="js/app.js?v=6"></script>
+<script src="js/app.js?v=7"></script>
 </body>
 </html>
