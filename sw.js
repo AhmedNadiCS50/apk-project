@@ -1,26 +1,26 @@
-// TaskFlow Service Worker
-const CACHE_NAME = 'taskflow-cache-v1';
+// TaskFlow Service Worker - Network First Strategy for Instant Live Updates
+const CACHE_NAME = 'taskflow-cache-v2';
 const ASSETS = [
   './',
   './index.html',
-  './css/styles.css',
-  './js/app.js',
+  './css/styles.css?v=2',
+  './js/app.js?v=2',
   './manifest.json',
   './icons/icon-192.png',
-  './icons/icon-512.png',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'
+  './icons/icon-512.png'
 ];
 
-// Install: Pre-cache all assets
+// Install: Pre-cache all assets and force immediate activation
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(ASSETS.filter(url => !url.startsWith('https://fonts')));
-    }).then(() => self.skipWaiting())
+      return cache.addAll(ASSETS).catch(err => console.warn('Cache addAll warning:', err));
+    })
   );
 });
 
-// Activate: Clean up old caches
+// Activate: Delete all old caches and claim clients immediately
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
@@ -29,23 +29,19 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch: Cache-first with network fallback
+// Fetch: Network First, fallback to cache if offline
 self.addEventListener('fetch', event => {
-  // Skip non-GET or cross-origin (except Google Fonts)
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached;
-      return fetch(event.request).then(response => {
-        if (!response || response.status !== 200 || response.type === 'opaque') return response;
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+    fetch(event.request)
+      .then(response => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+        }
         return response;
-      }).catch(() => {
-        // Offline fallback: return cached index.html for navigation
-        if (event.request.mode === 'navigate') return caches.match('./index.html');
-      });
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
 });
