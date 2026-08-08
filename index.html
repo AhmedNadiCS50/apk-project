@@ -96,6 +96,9 @@
         </div>
       </div>
 
+      <!-- Divider -->
+      <div class="section-divider"><span>التركيز والإنتاجية</span></div>
+
       <!-- Row 2: Pomodoro + Quote side by side -->
       <div class="dual-row">
         <!-- Pomodoro compact card -->
@@ -138,6 +141,9 @@
         </div>
       </div>
 
+      <!-- Divider -->
+      <div class="section-divider"><span>إضافة سريعة</span></div>
+
       <!-- Row 3: Quick Add Templates horizontal scroll -->
       <div class="templates-row">
         <button class="template-chip" data-template="قراءة 30 دقيقة" data-category="study">📚 قراءة</button>
@@ -147,6 +153,9 @@
         <button class="template-chip" data-template="تأمل 10 دقائق" data-category="health">🧘 تأمل</button>
         <button class="template-chip" data-template="مراسلة رسائل البريد" data-category="work">📧 بريد</button>
       </div>
+
+      <!-- Divider -->
+      <div class="section-divider"><span>مذكرات صوتية</span></div>
 
       <!-- Row 4: Sticky Voice Memo & Quick Thoughts Widget -->
       <div class="voice-memo-widget" id="voice-memo-widget">
@@ -166,6 +175,7 @@
     </section>
 
     <!-- === TASKS SECTION === -->
+    <div class="section-divider" style="margin: 6px 0 0; opacity: 0.4;"><span>المهام</span></div>
     <section class="tasks-section">
 
       <!-- Category Filter Chips -->
@@ -212,7 +222,7 @@
     </div>
 
     <!-- Monthly Overview Bar (Stat 1) -->
-    <div id="cal-monthly-overview" style="display:flex;gap:10px;margin-bottom:14px;padding:12px 16px;background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);align-items:center;flex-wrap:wrap;">
+    <div id="cal-monthly-overview" style="display:flex;gap:10px;margin-bottom:20px;padding:12px 16px;background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);align-items:center;flex-wrap:wrap;">
       <span id="cal-stat-total"  style="font-size:0.82rem;font-weight:700;color:var(--text-muted);">📋 ٠ مهمة</span>
       <span style="color:var(--border);font-size:0.7rem;">•</span>
       <span id="cal-stat-done"   style="font-size:0.82rem;font-weight:700;color:#22c55e;">✅ ٠ مكتملة</span>
@@ -256,11 +266,16 @@
       <h2 style="font-size:1.15rem;font-weight:800;color:var(--text-main);margin:0;">📊 إحصائيات الأداء والأوسمة</h2>
       <button class="chip-btn" id="share-stats-btn" style="background:var(--primary);color:#fff;margin:0;padding:8px 14px;">📸 مشاركة الإنجاز</button>
     </div>
-    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;box-shadow:var(--shadow-sm);">
+    <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);">
       <p style="font-size:0.88rem;font-weight:700;margin-bottom:10px;color:var(--text-main);">📈 معدل الإنجاز الأسبوعي</p>
       <canvas id="weekly-chart-canvas" height="150" style="width:100%;display:block;"></canvas>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;" id="stats-grid"></div>
+
+    <div class="section-divider" style="margin:6px 0;"><span>الأرقام</span></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" id="stats-grid"></div>
+
+    <div class="section-divider" style="margin:6px 0;"><span>الأوسمة</span></div>
 
     <!-- Gamification & Badges Section -->
     <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:16px;">

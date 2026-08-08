@@ -1658,3 +1658,133 @@ body { display: flex; justify-content: flex-start; align-items: flex-start; }
   to   { opacity: 1; transform: translateY(0);    }
 }
 
+/* =============================================
+   LAYOUT BREATHING SPACE — Global Spacing Fix
+   ============================================= */
+
+/* More breathing in dashboard */
+.dashboard-section {
+  padding: 20px 16px 0;
+  gap: 16px;
+}
+
+/* Bigger gap between dashboard and tasks section */
+.tasks-section {
+  padding: 20px 16px 24px;
+  gap: 14px;
+}
+
+/* Section dividers — decorative label separators */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  margin: 4px 0;
+  opacity: 0.55;
+}
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  border-radius: 99px;
+}
+.section-divider span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Visual divider between dashboard cards and voice memo widget */
+.voice-memo-widget {
+  margin-top: 4px;
+}
+
+/* Views padding — all outer views get consistent breathing room */
+#calendar-view,
+#stats-view,
+#settings-view {
+  padding: 22px 18px 120px;
+}
+
+/* Space between stat cards within stats view */
+#stats-view > div {
+  margin-bottom: 18px;
+}
+#stats-view > div:last-child {
+  margin-bottom: 0;
+}
+
+/* Settings cards breathe more */
+.settings-card {
+  margin-bottom: 14px;
+}
+.settings-card:last-child {
+  margin-bottom: 0;
+}
+
+/* Stat cards row gap */
+.stat-cards-row {
+  gap: 12px;
+}
+
+/* Dual row gap */
+.dual-row {
+  gap: 12px;
+}
+
+/* Templates row breathing */
+.templates-row {
+  gap: 10px;
+  padding-bottom: 4px;
+}
+
+/* Calendar card gets more inner padding */
+.calendar-card {
+  padding: 18px;
+}
+
+/* Calendar filter tabs spacing */
+#cal-filter-tabs {
+  gap: 10px;
+  padding-bottom: 2px;
+}
+
+/* monthly overview spacing */
+#cal-monthly-overview {
+  gap: 12px;
+  padding: 14px 18px;
+}
+
+/* Selected date tasks section gets top breathing room */
+#calendar-selected-tasks-list {
+  margin-top: 4px;
+}
+
+/* Badges grid — more gap */
+#badges-container {
+  gap: 12px !important;
+}
+
+/* Category breakdown spacing */
+#category-breakdown {
+  margin-top: 10px !important;
+}
+
+/* Bottom nav overlap padding on content */
+.app-content {
+  padding-bottom: 90px;
+}
+
+/* Section header spacing standardisation */
+#calendar-view h2,
+#stats-view h2,
+#settings-view h2 {
+  margin-bottom: 18px;
+}
+
